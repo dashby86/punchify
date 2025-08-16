@@ -143,7 +143,10 @@ export function getUniqueAddresses(): string[] {
   Object.values(tasks).forEach(task => {
     if (task.address && task.address.trim()) {
       const streetAddress = parseStreetAddress(task.address)
-      addresses.add(streetAddress)
+      // Only add non-empty street addresses
+      if (streetAddress && streetAddress.trim()) {
+        addresses.add(streetAddress)
+      }
     }
   })
   
@@ -154,12 +157,8 @@ export function getTasksByAddress(address?: string): Task[] {
   const tasks = getPublishedTasks()
   const taskList = Object.values(tasks)
   
-  console.log('getTasksByAddress called with:', address)
-  console.log('Available tasks:', taskList.length)
-  
   if (!address) {
     // Return all tasks if no address filter
-    console.log('No address filter - returning all tasks')
     return taskList.sort((a, b) => 
       new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
     )
@@ -168,17 +167,12 @@ export function getTasksByAddress(address?: string): Task[] {
   // Filter by street address (up to first comma)
   const filteredTasks = taskList.filter(task => {
     if (!task.address) {
-      console.log('Task has no address:', task.id)
       return false
     }
     
     const taskStreetAddress = parseStreetAddress(task.address)
-    console.log(`Task ${task.id}: full="${task.address}" street="${taskStreetAddress}" comparing to "${address}"`)
-    
     return taskStreetAddress === address
   })
-  
-  console.log(`Filtered tasks for "${address}":`, filteredTasks.length)
   
   return filteredTasks.sort((a, b) => 
     new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()

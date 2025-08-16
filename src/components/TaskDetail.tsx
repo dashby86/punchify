@@ -60,7 +60,7 @@ export default function TaskDetail() {
   }
 
   const saveEdit = () => {
-    if (task && editingField && editValues[editingField as keyof Task] !== undefined) {
+    if (task && editingField) {
       updateTask(task.id, editValues)
       setTask({ ...task, ...editValues })
       setEditingField(null)
