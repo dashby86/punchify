@@ -59,14 +59,6 @@ export default function TaskDetail() {
     )
   }
 
-  const formatDate = (dateString: string) => {
-    const date = new Date(dateString)
-    return date.toLocaleDateString('en-US', {
-      month: 'long',
-      day: 'numeric',
-      year: 'numeric'
-    })
-  }
 
   return (
     <div className="min-h-screen bg-gray-100">
@@ -137,7 +129,7 @@ export default function TaskDetail() {
             <div className="flex items-center justify-between">
               <div className="flex-1">
                 <p className="text-sm font-medium text-gray-900 mb-1">Project</p>
-                <p className="text-sm text-gray-600">Task Creator Project</p>
+                <p className="text-sm text-gray-600">Default Project</p>
               </div>
               <FiChevronDown className="w-5 h-5 text-gray-400" />
             </div>
@@ -148,7 +140,7 @@ export default function TaskDetail() {
             <div className="flex items-center justify-between">
               <div className="flex-1">
                 <p className="text-sm font-medium text-gray-900 mb-1">Address</p>
-                <p className="text-sm text-gray-600">{task.location || 'No address specified'}</p>
+                <p className="text-sm text-gray-600">{task.location || 'Not specified'}</p>
               </div>
               <FiMapPin className="w-5 h-5 text-gray-400" />
             </div>
@@ -170,8 +162,8 @@ export default function TaskDetail() {
             <div className="flex items-center justify-between">
               <div className="flex-1">
                 <p className="text-sm font-medium text-gray-900 mb-1">Priority</p>
-                <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-orange-100 text-orange-800">
-                  High
+                <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-800">
+                  Not Set
                 </span>
               </div>
               <FiChevronDown className="w-5 h-5 text-gray-400" />
@@ -183,7 +175,7 @@ export default function TaskDetail() {
             <div className="flex items-center justify-between">
               <div className="flex-1">
                 <p className="text-sm font-medium text-gray-900 mb-1">Assignor</p>
-                <p className="text-sm text-gray-600">Task Creator User</p>
+                <p className="text-sm text-gray-600">User</p>
               </div>
               <FiChevronDown className="w-5 h-5 text-gray-400" />
             </div>
@@ -205,7 +197,7 @@ export default function TaskDetail() {
             <div className="flex items-center justify-between">
               <div className="flex-1">
                 <p className="text-sm font-medium text-gray-900 mb-1">Due date</p>
-                <p className="text-sm text-gray-600">{formatDate(task.createdAt)}</p>
+                <p className="text-sm text-gray-600">Not set</p>
               </div>
               <FiChevronDown className="w-5 h-5 text-gray-400" />
             </div>

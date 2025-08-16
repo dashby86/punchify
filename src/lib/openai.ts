@@ -62,19 +62,17 @@ Please respond with ONLY valid JSON in this format:
         temperature: 0.7,
       })
 
-      const aiResponse = response.choices[0].message?.content || '{}'
+      const aiResponse = response.choices[0].message?.content
+      
+      if (!aiResponse) {
+        throw new Error('OpenAI returned an empty response')
+      }
       
       try {
         return JSON.parse(aiResponse)
       } catch (parseError) {
         console.error('Failed to parse AI response:', aiResponse)
-        return {
-          title: 'Task Analysis',
-          summary: 'Work needs to be done based on uploaded media',
-          description: aiResponse,
-          location: 'Unknown',
-          professional: 'General Contractor'
-        }
+        throw new Error(`Invalid JSON response from OpenAI. Raw response: ${aiResponse}`)
       }
     } catch (error: any) {
       if (error.status === 429 && retries > 0) {

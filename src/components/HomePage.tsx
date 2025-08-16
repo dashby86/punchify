@@ -287,7 +287,7 @@ export default function HomePage() {
                       {media.name}
                     </span>
                     {media.type === 'audio' && (
-                      <span className="text-xs text-gray-500 flex-shrink-0">0:34</span>
+                      <span className="text-xs text-gray-500 flex-shrink-0">Audio</span>
                     )}
                   </div>
                   <button
