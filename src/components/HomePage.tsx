@@ -55,7 +55,7 @@ export default function HomePage() {
             }
           })
           setMediaFiles(restoredFiles)
-          info('Session restored', `Restored ${persistedMedia.length} uploaded file(s)`)
+          // Session restored silently - no need to notify user
         }
       } catch (error) {
         console.error('Failed to restore session:', error)
