@@ -7,7 +7,6 @@ import {
   createRoute,
   createRouter,
 } from '@tanstack/react-router'
-import { TanStackRouterDevtools } from '@tanstack/react-router-devtools'
 
 import './styles.css'
 import reportWebVitals from './reportWebVitals.ts'
@@ -17,12 +16,7 @@ import HomePage from './components/HomePage.tsx'
 import TaskDetail from './components/TaskDetail.tsx'
 
 const rootRoute = createRootRoute({
-  component: () => (
-    <>
-      <Outlet />
-      <TanStackRouterDevtools />
-    </>
-  ),
+  component: () => <Outlet />,
 })
 
 const indexRoute = createRoute({
