@@ -208,16 +208,24 @@ export default function HomePage() {
           setProcessingStep(`Analyzing video frames...`)
           const frames = await extractVideoFrames(media.file, 3) // Get 3 frames for AI
           
+          const transcript = mediaData[index]?.transcript
+          
+          // If there's a transcript, add it as a separate text input first
+          if (transcript) {
+            console.log('Adding transcript to AI analysis:', transcript)
+            allMediaInputs.push({
+              base64: '', // No image for transcript
+              type: 'text' as const,
+              description: `IMPORTANT - Video Audio Transcript: The person in the video says: "${transcript}". This describes the actual problem that needs to be fixed.`
+            })
+          }
+          
           // Add each frame as a separate image for AI analysis
           frames.forEach((frame, frameIndex) => {
             allMediaInputs.push({
               base64: frame,
               type: 'image' as const,
-              description: `Frame ${frameIndex + 1} from video "${media.file.name}". ${
-                frameIndex === 0 && mediaData[index]?.transcript 
-                  ? `Video transcript: "${mediaData[index].transcript}"` 
-                  : ''
-              }`
+              description: `Frame ${frameIndex + 1} of 3 from video "${media.file.name}"`
             })
           })
         } else {

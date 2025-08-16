@@ -37,15 +37,15 @@ export async function analyzeTaskFromMedia(
       const messageContent: any[] = [
         {
           type: "text",
-          text: `You are analyzing media files for a task management system. Based on the uploaded images and video frames, generate a detailed task description.
+          text: `You are analyzing media files for a task management system. Based on the uploaded images, video frames, and audio transcripts, generate a detailed task description.
 
-IMPORTANT: 
-- Multiple sequential images may be frames from the same video - analyze them together for context
-- If video transcript is provided, use it to understand what's happening in the video
-- Look at all frames to understand the complete problem/situation
-- Pay attention to movement, changes, or issues shown across multiple frames
+CRITICAL INSTRUCTIONS:
+1. IF A VIDEO TRANSCRIPT IS PROVIDED: The transcript contains the person's actual description of the problem. This is the PRIMARY source of information about what needs to be fixed. Trust what the person says over what you see.
+2. Video frames provide visual context but the TRANSCRIPT describes the actual issue
+3. For example: If the transcript says "the door won't shut and maybe the issue is the hinges", focus on that specific problem, not other things you might see like the doorknob appearance
+4. Multiple sequential images are frames from the same video - analyze them together
 
-Analyze the visual content and provide:
+Analyze the content and provide:
 
 1. Task Title: A clear, concise title for the work needed
 2. Summary: A brief 1-2 sentence overview
@@ -69,9 +69,16 @@ Please respond with ONLY valid JSON in this format:
         }
       ]
 
-      // Add images to the message
+      // Add images and text to the message
       mediaInputs.forEach((media, index) => {
-        if (media.type === 'image') {
+        if (media.type === 'text') {
+          // Pure text input (like transcripts)
+          messageContent.push({
+            type: "text",
+            text: media.description || ''
+          })
+        } else if (media.type === 'image') {
+          // Add the image
           messageContent.push({
             type: "image_url",
             image_url: {
@@ -79,8 +86,16 @@ Please respond with ONLY valid JSON in this format:
               detail: "high"
             }
           })
+          
+          // If there's a description (like for video frames), add it as text
+          if (media.description) {
+            messageContent.push({
+              type: "text",
+              text: media.description
+            })
+          }
         } else if (media.description) {
-          // For video thumbnails, add descriptive text
+          // For other media types with descriptions
           messageContent.push({
             type: "text",
             text: `Media ${index + 1}: ${media.description}`
