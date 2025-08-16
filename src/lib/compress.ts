@@ -63,7 +63,26 @@ export async function createThumbnail(file: File): Promise<string> {
 }
 
 export async function compressVideo(file: File): Promise<string> {
-  // Extract a single frame from video
+  // Since we can't truly compress video in the browser effectively,
+  // we'll store videos up to a reasonable size limit
+  const MAX_VIDEO_SIZE_MB = 3 // 3MB limit for localStorage
+  const sizeMB = file.size / (1024 * 1024)
+  
+  console.log(`Video size: ${sizeMB.toFixed(2)}MB`)
+  
+  if (sizeMB <= MAX_VIDEO_SIZE_MB) {
+    // Small enough to store directly
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader()
+      reader.onload = () => resolve(reader.result as string)
+      reader.onerror = reject
+      reader.readAsDataURL(file)
+    })
+  }
+  
+  // For larger videos, we need to extract a preview frame
+  // and store separately from the playable video
+  console.warn(`Video too large (${sizeMB.toFixed(1)}MB) for localStorage. Creating preview only.`)
   return extractSingleFrame(file, 1)
 }
 

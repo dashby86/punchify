@@ -7,6 +7,7 @@ import { analyzeTaskFromMedia, getOpenAIClient, transcribeAudio } from '@/lib/op
 import { saveTask, type MediaFile as StoredMediaFile } from '@/lib/storage'
 import { extractLocationFromImage, formatLocation } from '@/lib/exif'
 import { optimizeMediaFile, getFileSizeKB, extractVideoFrames } from '@/lib/compress'
+import { storeVideoWithFallback } from '@/lib/videoStorage'
 import { ProcessingOverlay } from './LoadingSpinner'
 import { ToastContainer, useToast } from './Toast'
 // Session storage removed - would be better implemented with backend + CDN
@@ -147,6 +148,9 @@ export default function HomePage() {
     setProcessingStep('Preparing media files...')
     
     try {
+      // Generate task ID early so we can use it for video storage
+      const taskId = uuidv4()
+      
       setProcessingStep('Processing media files...')
       const mediaData: StoredMediaFile[] = await Promise.all(
         mediaFiles.map(async (media) => {
@@ -165,35 +169,36 @@ export default function HomePage() {
           }
           
           setProcessingStep('Processing media files...')
-          let processedBase64: string
+          let processedUrl: string
+          let isPlayable = false
           
           if (media.type === 'video') {
-            // For videos: always extract multiple frames for better context
-            // We can't store full videos in localStorage due to size limits
-            setProcessingStep('Extracting video frames...')
+            // Store video for playback using IndexedDB
+            setProcessingStep('Storing video for playback...')
+            const videoResult = await storeVideoWithFallback(media.file, taskId)
+            processedUrl = videoResult.url
+            isPlayable = videoResult.isPlayable
             
-            // Extract multiple frames from the video for better AI analysis
-            const frames = await extractVideoFrames(media.file, 5) // Get 5 frames
-            
-            // Store the best frame as thumbnail
-            processedBase64 = frames[0] // Use first frame for storage
-            
-            // Store video metadata for reference
             const videoSizeMB = media.file.size / (1024 * 1024)
-            info('Video processed', `Extracted frames from ${videoSizeMB.toFixed(1)}MB video`)
+            if (isPlayable) {
+              success('Video stored', `${videoSizeMB.toFixed(1)}MB video saved for playback`)
+            } else {
+              warning('Video compressed', `${videoSizeMB.toFixed(1)}MB video saved as thumbnail only`)
+            }
           } else {
             // For images, always compress
-            processedBase64 = await optimizeMediaFile(media.file, media.type)
+            processedUrl = await optimizeMediaFile(media.file, media.type)
+            const sizeKB = getFileSizeKB(processedUrl)
+            console.log(`Compressed image ${media.name}: ${sizeKB}KB`)
           }
           
-          const sizeKB = getFileSizeKB(processedBase64)
-          console.log(`Processed ${media.name}: ${sizeKB}KB`)
           console.log(`Transcript for ${media.name}:`, transcript)
           return {
-            url: processedBase64,
+            url: processedUrl,
             type: media.type,
-            transcript
-          }
+            transcript,
+            isPlayable // Add flag to indicate if video is playable
+          } as StoredMediaFile
         })
       )
 
@@ -257,9 +262,8 @@ export default function HomePage() {
         }
       }
       
-      const taskId = uuidv4()
       const task = {
-        id: taskId,
+        id: taskId, // Use the pre-generated taskId
         ...taskData,
         // Use extracted location if AI didn't detect one
         location: taskData.location || extractedLocation || 'Not specified',

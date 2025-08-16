@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { useParams, Link, useNavigate } from '@tanstack/react-router'
 import { FiMapPin, FiUser, FiFileText, FiArrowLeft, FiChevronDown, FiTrash2, FiCamera, FiVideo, FiUpload, FiMaximize2 } from 'react-icons/fi'
 import { getTask, publishTask, deleteTask, type Task } from '@/lib/storage'
+import { retrieveVideo } from '@/lib/videoStorage'
 import MediaViewer from './MediaViewer'
 
 export default function TaskDetail() {
@@ -11,14 +12,28 @@ export default function TaskDetail() {
   const [loading, setLoading] = useState(true)
   const [viewerOpen, setViewerOpen] = useState(false)
   const [viewerIndex, setViewerIndex] = useState(0)
+  const [videoUrl, setVideoUrl] = useState<string | null>(null)
 
   useEffect(() => {
-    const fetchedTask = getTask(taskId)
-    console.log('Fetched task:', fetchedTask)
-    console.log('Task media:', fetchedTask?.media)
-    console.log('Media with transcripts:', fetchedTask?.media?.filter(m => m.transcript))
-    setTask(fetchedTask)
-    setLoading(false)
+    async function loadTask() {
+      const fetchedTask = getTask(taskId)
+      console.log('Fetched task:', fetchedTask)
+      console.log('Task media:', fetchedTask?.media)
+      console.log('Media with transcripts:', fetchedTask?.media?.filter(m => m.transcript))
+      
+      // Load video from IndexedDB if needed
+      if (fetchedTask?.media?.[0]?.type === 'video' && fetchedTask.media[0].url.startsWith('indexeddb://')) {
+        const video = await retrieveVideo(fetchedTask.media[0].url)
+        setVideoUrl(video)
+      } else if (fetchedTask?.media?.[0]?.type === 'video') {
+        setVideoUrl(fetchedTask.media[0].url)
+      }
+      
+      setTask(fetchedTask)
+      setLoading(false)
+    }
+    
+    loadTask()
   }, [taskId])
 
 
@@ -90,27 +105,51 @@ export default function TaskDetail() {
             }}
           >
             <div className="relative">
-              {task.media[0].type === 'video' && task.media[0].url.startsWith('data:video/') ? (
+              {task.media[0].type === 'video' && videoUrl && videoUrl.startsWith('data:video/') ? (
                 <video 
-                  src={task.media[0].url}
+                  src={videoUrl}
                   className="w-full h-48 object-cover"
                   controls
                   playsInline
                   muted
                 />
+              ) : task.media[0].type === 'video' && task.media[0].isPlayable ? (
+                <div className="relative">
+                  {videoUrl ? (
+                    <video 
+                      src={videoUrl}
+                      className="w-full h-48 object-cover"
+                      controls
+                      playsInline
+                      muted
+                    />
+                  ) : (
+                    <div className="w-full h-48 bg-gray-200 flex items-center justify-center">
+                      <p className="text-gray-500">Loading video...</p>
+                    </div>
+                  )}
+                </div>
               ) : (
                 <>
                   <img 
-                    src={task.media[0].url}
+                    src={task.media[0].type === 'video' ? (videoUrl || task.media[0].url) : task.media[0].url}
                     alt={`${task.media[0].type === 'video' ? 'Video thumbnail' : 'Image'}`}
                     className="w-full h-48 object-cover"
                   />
-                  <div className="absolute inset-0 flex items-center justify-center">
-                    <div className="w-12 h-12 bg-white/80 rounded-full flex items-center justify-center">
-                      {task.media[0].type === 'video' && <FiVideo className="w-6 h-6 text-gray-700" />}
-                      {task.media[0].type === 'image' && <FiCamera className="w-6 h-6 text-gray-700" />}
+                  {task.media[0].type === 'video' && !task.media[0].isPlayable && (
+                    <div className="absolute inset-0 flex items-center justify-center">
+                      <div className="w-12 h-12 bg-white/80 rounded-full flex items-center justify-center">
+                        <FiVideo className="w-6 h-6 text-gray-700" />
+                      </div>
                     </div>
-                  </div>
+                  )}
+                  {task.media[0].type === 'image' && (
+                    <div className="absolute inset-0 flex items-center justify-center">
+                      <div className="w-12 h-12 bg-white/80 rounded-full flex items-center justify-center">
+                        <FiCamera className="w-6 h-6 text-gray-700" />
+                      </div>
+                    </div>
+                  )}
                 </>
               )}
               <div className="absolute top-2 right-2">
@@ -122,7 +161,7 @@ export default function TaskDetail() {
             <div className="p-3">
               <p className="text-sm font-medium text-gray-900">
                 {task.media[0].type === 'video' 
-                  ? 'Video frame - Full video analyzed for task generation'
+                  ? (task.media[0].isPlayable ? 'Video - Click to play' : 'Video thumbnail - Full video analyzed')
                   : 'Image - Tap to view'}
               </p>
             </div>

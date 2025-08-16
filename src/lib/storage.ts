@@ -2,6 +2,7 @@ interface MediaFile {
   url: string
   type: 'image' | 'video'
   transcript?: string
+  isPlayable?: boolean
 }
 
 interface Task {
