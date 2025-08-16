@@ -252,10 +252,10 @@ export default function TaskDetail() {
           </button>
         </div>
 
-        {/* Audio Transcript */}
+        {/* Video Transcript */}
         {task.media.some(m => m.transcript) && (
           <div className="bg-white rounded-xl p-4 shadow-sm">
-            <p className="text-sm font-medium text-gray-900 mb-3">Audio transcript</p>
+            <p className="text-sm font-medium text-gray-900 mb-3">Video transcript</p>
             <div className="text-sm text-gray-700 leading-relaxed">
               {task.media.find(m => m.transcript)?.transcript}
             </div>
