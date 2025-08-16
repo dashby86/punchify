@@ -101,7 +101,15 @@ Please respond with ONLY valid JSON in this format:
       }
       
       try {
-        return JSON.parse(aiResponse)
+        // Clean up the response - remove markdown code blocks if present
+        let cleanedResponse = aiResponse.trim()
+        if (cleanedResponse.startsWith('```json')) {
+          cleanedResponse = cleanedResponse.replace(/^```json\s*/, '').replace(/\s*```$/, '')
+        } else if (cleanedResponse.startsWith('```')) {
+          cleanedResponse = cleanedResponse.replace(/^```\s*/, '').replace(/\s*```$/, '')
+        }
+        
+        return JSON.parse(cleanedResponse)
       } catch (parseError) {
         console.error('Failed to parse AI response:', aiResponse)
         throw new Error(`Invalid JSON response from OpenAI. Raw response: ${aiResponse}`)
