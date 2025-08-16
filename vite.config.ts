@@ -18,6 +18,7 @@ export default defineConfig({
   },
   server: {
     host: true, // Allow external connections
+    allowedHosts: ['punchify.catfishgames.dev'],
     hmr: {
       overlay: false // Disable error overlay that might cause refreshes
     }
