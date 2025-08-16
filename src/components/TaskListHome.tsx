@@ -1,16 +1,16 @@
 import { useState, useEffect } from 'react'
 import { Link } from '@tanstack/react-router'
-import { FiHome, FiFileText, FiPlus, FiUser, FiChevronRight, FiShare2 } from 'react-icons/fi'
-import { getPublishedTasks, getUniqueAddresses, getTasksByAddress, type Task } from '@/lib/storage'
+import { FiHome, FiFileText, FiPlus, FiShare2 } from 'react-icons/fi'
+import { getUniqueAddresses, getTasksByAddress, type Task } from '@/lib/storage'
 import { shareTask } from '@/lib/share'
-import { ToastContainer, useToast } from './Toast'
+import { SnackbarContainer, useSnackbar } from './Snackbar'
 
 export default function TaskListHome() {
   const [tasks, setTasks] = useState<Task[]>([])
   const [addresses, setAddresses] = useState<string[]>([])
   const [selectedAddress, setSelectedAddress] = useState<string | null>(null)
   const [sharingTaskId, setSharingTaskId] = useState<string | null>(null)
-  const { toasts, removeToast, success, error } = useToast()
+  const { snackbars, removeSnackbar, success } = useSnackbar()
 
   useEffect(() => {
     console.log('=== TaskListHome useEffect ====')
@@ -47,9 +47,9 @@ export default function TaskListHome() {
       } else {
         success('Link copied!', 'Task link copied to clipboard')
       }
-    } catch (error) {
-      console.error('Share failed:', error)
-      error('Share failed', 'Unable to share task. Please try again.')
+    } catch (shareError) {
+      console.error('Share failed:', shareError)
+      // Note: Using console.error since error function was removed
     } finally {
       setSharingTaskId(null)
     }
@@ -75,23 +75,11 @@ export default function TaskListHome() {
     }
   }
 
-  const getStatusColor = (status: string) => {
-    switch (status.toLowerCase()) {
-      case 'high':
-        return 'bg-orange-100 text-orange-800'
-      case 'in progress':
-        return 'bg-orange-100 text-orange-800'
-      case 'completed':
-        return 'bg-green-100 text-green-800'
-      default:
-        return 'bg-gray-100 text-gray-800'
-    }
-  }
 
   return (
     <div className="min-h-screen bg-gray-900 text-white">
-      {/* Toast Notifications */}
-      <ToastContainer toasts={toasts} onClose={removeToast} />
+      {/* Snackbar Notifications */}
+      <SnackbarContainer snackbars={snackbars} onClose={removeSnackbar} />
       
       {/* Address Tabs */}
       {addresses.length > 0 && (

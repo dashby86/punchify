@@ -9,7 +9,7 @@ import { extractLocationFromImage, formatLocation } from '@/lib/exif'
 import { optimizeMediaFile, getFileSizeKB, extractVideoFrames } from '@/lib/compress'
 import { storeVideoWithFallback } from '@/lib/videoStorage'
 import { ProcessingOverlay } from './LoadingSpinner'
-import { ToastContainer, useToast } from './Toast'
+import { SnackbarContainer, useSnackbar } from './Snackbar'
 // Session storage removed - would be better implemented with backend + CDN
 
 interface MediaFile {
@@ -25,7 +25,7 @@ export default function HomePage() {
   const [isProcessing, setIsProcessing] = useState(false)
   const [processingStep, setProcessingStep] = useState('')
   // API key is now handled via environment variables
-  const { toasts, removeToast, success, error, warning, info } = useToast()
+  const { snackbars, removeSnackbar, success, error, warning, info } = useSnackbar()
   const fileInputRef = useRef<HTMLInputElement>(null)
   const cameraInputRef = useRef<HTMLInputElement>(null)
   const videoInputRef = useRef<HTMLInputElement>(null)
@@ -164,14 +164,6 @@ export default function HomePage() {
     }
   }
 
-  const fileToBase64 = (file: File): Promise<string> => {
-    return new Promise((resolve, reject) => {
-      const reader = new FileReader()
-      reader.readAsDataURL(file)
-      reader.onload = () => resolve(reader.result as string)
-      reader.onerror = error => reject(error)
-    })
-  }
 
   const handleSubmit = async () => {
     if (mediaFiles.length === 0) {
@@ -361,8 +353,8 @@ export default function HomePage() {
 
   return (
     <div className="min-h-screen bg-gray-900 text-white">
-      {/* Toast Notifications */}
-      <ToastContainer toasts={toasts} onClose={removeToast} />
+      {/* Snackbar Notifications */}
+      <SnackbarContainer snackbars={snackbars} onClose={removeSnackbar} />
       
       {/* Processing Overlay */}
       {isProcessing && (

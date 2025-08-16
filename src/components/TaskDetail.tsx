@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useParams, Link, useNavigate } from '@tanstack/react-router'
-import { FiMapPin, FiUser, FiFileText, FiArrowLeft, FiChevronDown, FiTrash2, FiCamera, FiVideo, FiUpload, FiMaximize2, FiEdit3, FiCheck, FiX } from 'react-icons/fi'
+import { FiArrowLeft, FiTrash2, FiCamera, FiVideo, FiMaximize2, FiEdit3, FiCheck, FiX } from 'react-icons/fi'
 import { getTask, publishTask, deleteTask, updateTask, type Task } from '@/lib/storage'
 import { retrieveVideo } from '@/lib/videoStorage'
 import MediaViewer from './MediaViewer'
