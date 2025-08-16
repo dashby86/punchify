@@ -119,9 +119,7 @@ export default function TaskDetail() {
             <div className="p-3">
               <p className="text-sm font-medium text-gray-900">
                 {task.media[0].type === 'video' 
-                  ? (task.media[0].url.startsWith('data:video/') 
-                     ? 'Video - Click to play' 
-                     : 'Video thumbnail - Original compressed for storage')
+                  ? 'Video frame - Full video analyzed for task generation'
                   : 'Image - Tap to view'}
               </p>
             </div>

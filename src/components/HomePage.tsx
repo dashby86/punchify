@@ -6,7 +6,7 @@ import { v4 as uuidv4 } from 'uuid'
 import { analyzeTaskFromMedia, getOpenAIClient, transcribeAudio } from '@/lib/openai'
 import { saveTask, type MediaFile as StoredMediaFile } from '@/lib/storage'
 import { extractLocationFromImage, formatLocation } from '@/lib/exif'
-import { optimizeMediaFile, getFileSizeKB } from '@/lib/compress'
+import { optimizeMediaFile, getFileSizeKB, extractVideoFrames } from '@/lib/compress'
 import { ProcessingOverlay } from './LoadingSpinner'
 import { ToastContainer, useToast } from './Toast'
 // Session storage removed - would be better implemented with backend + CDN
@@ -168,15 +168,19 @@ export default function HomePage() {
           let processedBase64: string
           
           if (media.type === 'video') {
-            // For videos: check file size and decide whether to store original or thumbnail
+            // For videos: always extract multiple frames for better context
+            // We can't store full videos in localStorage due to size limits
+            setProcessingStep('Extracting video frames...')
+            
+            // Extract multiple frames from the video for better AI analysis
+            const frames = await extractVideoFrames(media.file, 5) // Get 5 frames
+            
+            // Store the best frame as thumbnail
+            processedBase64 = frames[0] // Use first frame for storage
+            
+            // Store video metadata for reference
             const videoSizeMB = media.file.size / (1024 * 1024)
-            if (videoSizeMB > 5) { // If video is larger than 5MB, store as thumbnail
-              processedBase64 = await optimizeMediaFile(media.file, media.type)
-              warning('Large video', `Video compressed to thumbnail due to size (${videoSizeMB.toFixed(1)}MB)`)
-            } else {
-              // Store original video for smaller files
-              processedBase64 = await fileToBase64(media.file)
-            }
+            info('Video processed', `Extracted frames from ${videoSizeMB.toFixed(1)}MB video`)
           } else {
             // For images, always compress
             processedBase64 = await optimizeMediaFile(media.file, media.type)
@@ -192,39 +196,43 @@ export default function HomePage() {
         })
       )
 
-      // Prepare media inputs for GPT-4 Vision analysis (use original for AI, compressed for storage)
+      // Prepare media inputs for GPT-4 Vision analysis
       setProcessingStep('Preparing AI analysis...')
-      const mediaInputs = await Promise.all(
-        mediaFiles.map(async (media, index) => {
-          let base64: string
+      const allMediaInputs: any[] = []
+      
+      for (let index = 0; index < mediaFiles.length; index++) {
+        const media = mediaFiles[index]
+        
+        if (media.type === 'video') {
+          // For videos, extract multiple frames for better analysis
+          setProcessingStep(`Analyzing video frames...`)
+          const frames = await extractVideoFrames(media.file, 3) // Get 3 frames for AI
           
-          if (media.type === 'video') {
-            // For AI analysis, use video thumbnail but include transcript for context
-            base64 = await optimizeMediaFile(media.file, media.type) // This creates a thumbnail
-          } else {
-            // For images, use compressed version for AI analysis
-            base64 = await optimizeMediaFile(media.file, media.type)
-          }
-          
-          let description = undefined
-          if (media.type === 'video') {
-            const matchingMedia = mediaData[index]
-            description = `A thumbnail from a video showing work that needs to be done (${media.file.name})`
-            if (matchingMedia?.transcript) {
-              description += `. Video transcript: "${matchingMedia.transcript}"`
-            }
-          }
-          
-          return {
+          // Add each frame as a separate image for AI analysis
+          frames.forEach((frame, frameIndex) => {
+            allMediaInputs.push({
+              base64: frame,
+              type: 'image' as const,
+              description: `Frame ${frameIndex + 1} from video "${media.file.name}". ${
+                frameIndex === 0 && mediaData[index]?.transcript 
+                  ? `Video transcript: "${mediaData[index].transcript}"` 
+                  : ''
+              }`
+            })
+          })
+        } else {
+          // For images, use compressed version
+          const base64 = await optimizeMediaFile(media.file, media.type)
+          allMediaInputs.push({
             base64,
-            type: media.type === 'video' ? 'image' as const : media.type, // Send video thumbnails as images to AI
-            description
-          }
-        })
-      )
+            type: media.type,
+            description: undefined
+          })
+        }
+      }
 
       setProcessingStep('Analyzing with AI...')
-      const taskData = await analyzeTaskFromMedia(mediaInputs)
+      const taskData = await analyzeTaskFromMedia(allMediaInputs)
       
       // Try to extract location from images
       setProcessingStep('Extracting location data...')

@@ -37,9 +37,13 @@ export async function analyzeTaskFromMedia(
       const messageContent: any[] = [
         {
           type: "text",
-          text: `You are analyzing media files for a task management system. Based on the uploaded images and video thumbnails, generate a detailed task description.
+          text: `You are analyzing media files for a task management system. Based on the uploaded images and video frames, generate a detailed task description.
 
-IMPORTANT: Some images may be thumbnails extracted from videos. If an image appears to be a video thumbnail or if video transcript information is provided, consider this context carefully.
+IMPORTANT: 
+- Multiple sequential images may be frames from the same video - analyze them together for context
+- If video transcript is provided, use it to understand what's happening in the video
+- Look at all frames to understand the complete problem/situation
+- Pay attention to movement, changes, or issues shown across multiple frames
 
 Analyze the visual content and provide:
 

@@ -63,8 +63,11 @@ export async function createThumbnail(file: File): Promise<string> {
 }
 
 export async function compressVideo(file: File): Promise<string> {
-  // For videos, we can't compress on client side easily
-  // So we'll create a thumbnail from the first frame
+  // Extract a single frame from video
+  return extractSingleFrame(file, 1)
+}
+
+async function extractSingleFrame(file: File, timeInSeconds: number): Promise<string> {
   return new Promise((resolve, reject) => {
     const video = document.createElement('video')
     const canvas = document.createElement('canvas')
@@ -75,7 +78,9 @@ export async function compressVideo(file: File): Promise<string> {
         canvas.width = Math.min(video.videoWidth, 800)
         canvas.height = Math.min(video.videoHeight, 600)
         
-        video.currentTime = 1 // Get frame at 1 second
+        // Ensure time is within video duration
+        const seekTime = Math.min(timeInSeconds, video.duration * 0.5)
+        video.currentTime = seekTime
       } catch (error) {
         reject(error)
       }
@@ -93,6 +98,50 @@ export async function compressVideo(file: File): Promise<string> {
     
     video.onerror = reject
     video.src = URL.createObjectURL(file)
+    video.muted = true
+    video.playsInline = true
+  })
+}
+
+export async function extractVideoFrames(file: File, frameCount: number = 5): Promise<string[]> {
+  return new Promise(async (resolve, reject) => {
+    const video = document.createElement('video')
+    const canvas = document.createElement('canvas')
+    const ctx = canvas.getContext('2d')
+    const frames: string[] = []
+    
+    video.onloadedmetadata = async () => {
+      try {
+        canvas.width = Math.min(video.videoWidth, 800)
+        canvas.height = Math.min(video.videoHeight, 600)
+        
+        const duration = video.duration
+        const interval = duration / (frameCount + 1) // Distribute frames evenly
+        
+        // Extract frames at different timestamps
+        for (let i = 1; i <= frameCount; i++) {
+          const timestamp = interval * i
+          
+          await new Promise<void>((seekResolve) => {
+            video.onseeked = () => {
+              ctx!.drawImage(video, 0, 0, canvas.width, canvas.height)
+              const frame = canvas.toDataURL('image/jpeg', 0.7)
+              frames.push(frame)
+              seekResolve()
+            }
+            video.currentTime = timestamp
+          })
+        }
+        
+        resolve(frames)
+      } catch (error) {
+        reject(error)
+      }
+    }
+    
+    video.onerror = reject
+    const videoUrl = URL.createObjectURL(file)
+    video.src = videoUrl
     video.muted = true
     video.playsInline = true
   })
