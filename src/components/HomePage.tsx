@@ -1,7 +1,7 @@
 import { useState, useCallback, useRef, useEffect } from 'react'
 import { useNavigate, Link } from '@tanstack/react-router'
 import { useDropzone } from 'react-dropzone'
-import { FiCamera, FiVideo, FiMic, FiUpload, FiX, FiChevronLeft } from 'react-icons/fi'
+import { FiCamera, FiVideo, FiUpload, FiX, FiChevronLeft } from 'react-icons/fi'
 import { v4 as uuidv4 } from 'uuid'
 import { analyzeTaskFromMedia, getOpenAIClient, transcribeAudio } from '@/lib/openai'
 import { saveTask, type MediaFile as StoredMediaFile } from '@/lib/storage'
@@ -14,7 +14,7 @@ import { ToastContainer, useToast } from './Toast'
 interface MediaFile {
   file: File
   preview: string
-  type: 'image' | 'video' | 'audio'
+  type: 'image' | 'video'
   name: string
 }
 
@@ -28,7 +28,6 @@ export default function HomePage() {
   const fileInputRef = useRef<HTMLInputElement>(null)
   const cameraInputRef = useRef<HTMLInputElement>(null)
   const videoInputRef = useRef<HTMLInputElement>(null)
-  const audioInputRef = useRef<HTMLInputElement>(null)
 
   // Cleanup object URLs when component unmounts or files change
   useEffect(() => {
@@ -65,8 +64,7 @@ export default function HomePage() {
       const newFiles = acceptedFiles.map(file => ({
         file,
         preview: URL.createObjectURL(file),
-        type: file.type.startsWith('video/') ? 'video' as const : 
-              file.type.startsWith('audio/') ? 'audio' as const : 'image' as const,
+        type: file.type.startsWith('video/') ? 'video' as const : 'image' as const,
         name: file.name
       }))
       setMediaFiles(prev => [...prev, ...newFiles])
@@ -78,8 +76,7 @@ export default function HomePage() {
     onDrop,
     accept: {
       'image/*': ['.png', '.jpg', '.jpeg', '.gif', '.webp', '.heic'],
-      'video/*': ['.mp4', '.mov', '.avi', '.webm'],
-      'audio/*': ['.mp3', '.wav', '.m4a', '.aac']
+      'video/*': ['.mp4', '.mov', '.avi', '.webm']
     },
     maxFiles: 10,
     multiple: true,
@@ -110,10 +107,6 @@ export default function HomePage() {
     videoInputRef.current?.click()
   }
 
-  const handleAudioCapture = (e?: React.MouseEvent) => {
-    e?.preventDefault()
-    audioInputRef.current?.click()
-  }
 
   const handleUploadExisting = (e?: React.MouseEvent) => {
     e?.preventDefault()
@@ -159,8 +152,8 @@ export default function HomePage() {
         mediaFiles.map(async (media) => {
           let transcript: string | undefined
           
-          // Transcribe audio and video files
-          if (media.type === 'audio' || media.type === 'video') {
+          // Transcribe video files
+          if (media.type === 'video') {
             try {
               setProcessingStep(`Transcribing ${media.type}...`)
               transcript = await transcribeAudio(media.file)
@@ -196,11 +189,6 @@ export default function HomePage() {
             description = `A video showing work that needs to be done (${media.file.name})`
             if (matchingMedia?.transcript) {
               description += `. Video transcript: "${matchingMedia.transcript}"`
-            }
-          } else if (media.type === 'audio') {
-            description = `An audio recording describing work that needs to be done (${media.file.name})`
-            if (matchingMedia?.transcript) {
-              description += `. Audio transcript: "${matchingMedia.transcript}"`
             }
           }
           
@@ -302,7 +290,7 @@ export default function HomePage() {
         {/* Info Banner */}
         <div className="bg-gradient-to-r from-red-900/30 to-blue-900/30 border border-red-500/20 rounded-xl p-4 mb-6">
           <p className="text-center text-sm">
-            Upload visual/audio content with as much detail as possible and AI will analyze it to create a detailed ticket in seconds
+            Upload photos and videos with as much detail as possible and AI will analyze them to create a detailed ticket in seconds
           </p>
         </div>
 
@@ -312,7 +300,7 @@ export default function HomePage() {
           <h2 className="text-xl font-semibold mb-4">Create your content</h2>
           
           {/* Capture Buttons */}
-          <div className="grid grid-cols-3 gap-3 mb-4">
+          <div className="grid grid-cols-2 gap-3 mb-4">
             <button
               onClick={handleCameraCapture}
               className="bg-gray-800 border border-gray-700 rounded-xl p-6 flex flex-col items-center justify-center hover:bg-gray-750 transition-colors"
@@ -327,14 +315,6 @@ export default function HomePage() {
             >
               <FiVideo className="w-8 h-8 mb-2 text-gray-300" />
               <span className="text-sm text-gray-300">Video</span>
-            </button>
-            
-            <button
-              onClick={handleAudioCapture}
-              className="bg-gray-800 border border-gray-700 rounded-xl p-6 flex flex-col items-center justify-center hover:bg-gray-750 transition-colors"
-            >
-              <FiMic className="w-8 h-8 mb-2 text-gray-300" />
-              <span className="text-sm text-gray-300">Audio</span>
             </button>
           </div>
 
@@ -379,13 +359,9 @@ export default function HomePage() {
                   <div className="flex items-center gap-3 min-w-0 flex-1">
                     {media.type === 'image' && <FiCamera className="w-5 h-5 text-gray-400 flex-shrink-0" />}
                     {media.type === 'video' && <FiVideo className="w-5 h-5 text-gray-400 flex-shrink-0" />}
-                    {media.type === 'audio' && <FiMic className="w-5 h-5 text-gray-400 flex-shrink-0" />}
                     <span className="text-sm text-gray-300 truncate flex-1 min-w-0" title={media.name}>
                       {media.name}
                     </span>
-                    {media.type === 'audio' && (
-                      <span className="text-xs text-gray-500 flex-shrink-0">Audio</span>
-                    )}
                   </div>
                   <button
                     onClick={() => removeFile(index)}
@@ -413,7 +389,6 @@ export default function HomePage() {
             if (fileInputRef.current) fileInputRef.current.value = ''
             if (cameraInputRef.current) cameraInputRef.current.value = ''
             if (videoInputRef.current) videoInputRef.current.value = ''
-            if (audioInputRef.current) audioInputRef.current.value = ''
             
             success('Files cleared', 'All uploaded files have been removed')
           }}
@@ -449,7 +424,7 @@ export default function HomePage() {
         ref={fileInputRef}
         type="file"
         multiple
-        accept="image/*,video/*,audio/*"
+        accept="image/*,video/*"
         onChange={handleFileChange}
         className="hidden"
       />
@@ -467,14 +442,6 @@ export default function HomePage() {
         type="file"
         accept="video/*"
         capture="environment"
-        multiple
-        onChange={handleFileChange}
-        className="hidden"
-      />
-      <input
-        ref={audioInputRef}
-        type="file"
-        accept="audio/*"
         multiple
         onChange={handleFileChange}
         className="hidden"

@@ -111,7 +111,7 @@ export function shouldCompress(file: File): boolean {
   return file.size > maxSizeKB * 1024
 }
 
-export async function optimizeMediaFile(file: File, type: 'image' | 'video' | 'audio'): Promise<string> {
+export async function optimizeMediaFile(file: File, type: 'image' | 'video'): Promise<string> {
   try {
     switch (type) {
       case 'image':
@@ -130,16 +130,6 @@ export async function optimizeMediaFile(file: File, type: 'image' | 'video' | 'a
       case 'video':
         // For videos, create a thumbnail representation
         return await compressVideo(file)
-        
-      case 'audio':
-        // For audio, we'll store a small placeholder or metadata
-        return 'data:image/svg+xml;base64,' + btoa(`
-          <svg xmlns="http://www.w3.org/2000/svg" width="100" height="100" viewBox="0 0 100 100">
-            <rect width="100" height="100" fill="#374151"/>
-            <text x="50" y="45" text-anchor="middle" fill="white" font-size="12">🎵</text>
-            <text x="50" y="65" text-anchor="middle" fill="white" font-size="8">${file.name}</text>
-          </svg>
-        `)
         
       default:
         throw new Error('Unsupported media type')

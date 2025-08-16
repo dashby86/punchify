@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useParams, Link, useNavigate } from '@tanstack/react-router'
-import { FiMapPin, FiUser, FiFileText, FiArrowLeft, FiChevronDown, FiTrash2, FiCamera, FiVideo, FiMic, FiUpload, FiMaximize2 } from 'react-icons/fi'
+import { FiMapPin, FiUser, FiFileText, FiArrowLeft, FiChevronDown, FiTrash2, FiCamera, FiVideo, FiUpload, FiMaximize2 } from 'react-icons/fi'
 import { getTask, publishTask, deleteTask, type Task } from '@/lib/storage'
 import MediaViewer from './MediaViewer'
 
@@ -96,7 +96,6 @@ export default function TaskDetail() {
                 <div className="w-12 h-12 bg-white/80 rounded-full flex items-center justify-center">
                   {task.media[0].type === 'video' && <FiVideo className="w-6 h-6 text-gray-700" />}
                   {task.media[0].type === 'image' && <FiCamera className="w-6 h-6 text-gray-700" />}
-                  {task.media[0].type === 'audio' && <FiMic className="w-6 h-6 text-gray-700" />}
                 </div>
               </div>
               <div className="absolute top-2 right-2">
@@ -107,9 +106,7 @@ export default function TaskDetail() {
             </div>
             <div className="p-3">
               <p className="text-sm font-medium text-gray-900">
-                {task.media[0].type === 'video' ? 'Video thumbnail - Original compressed for storage' : 
-                 task.media[0].type === 'image' ? 'Image - Tap to view' :
-                 'Audio - Tap to view'}
+                {task.media[0].type === 'video' ? 'Video thumbnail - Original compressed for storage' : 'Image - Tap to view'}
               </p>
             </div>
           </div>
@@ -237,9 +234,8 @@ export default function TaskDetail() {
                 <div className="flex items-center gap-2">
                   {item.type === 'image' && <FiCamera className="w-4 h-4 text-gray-500" />}
                   {item.type === 'video' && <FiVideo className="w-4 h-4 text-gray-500" />}
-                  {item.type === 'audio' && <FiMic className="w-4 h-4 text-gray-500" />}
                   <span className="text-sm text-gray-700">
-                    {item.type === 'image' ? 'Image' : item.type === 'video' ? 'Video' : 'Audio'} {index + 1}
+                    {item.type === 'image' ? 'Image' : 'Video'} {index + 1}
                   </span>
                   <span className="text-xs text-gray-500">Tap to view</span>
                 </div>
