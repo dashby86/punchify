@@ -7,11 +7,11 @@
 6 silly config load:file:/usr/local/etc/npmrc
 7 verbose title npm view @anthropic-ai/claude-code@latest version
 8 verbose argv "view" "@anthropic-ai/claude-code@latest" "version"
-9 verbose logfile logs-max:10 dir:/Users/dylan/punchify/.npm-cache/_logs/2025-08-16T01_11_26_512Z-
-10 verbose logfile /Users/dylan/punchify/.npm-cache/_logs/2025-08-16T01_11_26_512Z-debug-0.log
+9 verbose logfile logs-max:10 dir:/Users/dylan/punchify/.npm-cache/_logs/2025-08-16T01_18_02_773Z-
+10 verbose logfile /Users/dylan/punchify/.npm-cache/_logs/2025-08-16T01_18_02_773Z-debug-0.log
 11 silly logfile start cleaning logs, removing 1 files
 12 silly logfile done cleaning log files
-13 http fetch GET 200 https://registry.npmjs.org/@anthropic-ai%2fclaude-code 243ms (cache revalidated)
+13 http fetch GET 200 https://registry.npmjs.org/@anthropic-ai%2fclaude-code 209ms (cache revalidated)
 14 verbose cwd /Users/dylan/punchify
 15 verbose os Darwin 24.5.0
 16 verbose node v22.12.0

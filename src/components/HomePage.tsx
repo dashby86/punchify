@@ -1,5 +1,5 @@
 import { useState, useCallback, useRef, useEffect } from 'react'
-import { useNavigate } from '@tanstack/react-router'
+import { useNavigate, Link } from '@tanstack/react-router'
 import { useDropzone } from 'react-dropzone'
 import { FiCamera, FiVideo, FiMic, FiUpload, FiX, FiSettings, FiChevronLeft } from 'react-icons/fi'
 import { v4 as uuidv4 } from 'uuid'
@@ -153,7 +153,7 @@ export default function HomePage() {
       }
 
       saveTask(task)
-      navigate({ to: `/task/${taskId}` })
+      navigate({ to: '/' })
     } catch (error) {
       console.error('Error processing task:', error)
       alert('Failed to process task. Please check your API key and try again.')
@@ -166,7 +166,9 @@ export default function HomePage() {
     <div className="min-h-screen bg-gray-900 text-white">
       {/* Header */}
       <div className="flex items-center justify-between p-4 border-b border-gray-800">
-        <FiChevronLeft className="w-6 h-6 text-gray-400" />
+        <Link to="/" className="p-1">
+          <FiChevronLeft className="w-6 h-6 text-gray-400" />
+        </Link>
         <div className="flex items-center gap-2">
           <div className="w-6 h-6 bg-gradient-to-r from-red-500 to-blue-500 rounded"></div>
           <span className="text-lg font-semibold">AI Task Creator</span>

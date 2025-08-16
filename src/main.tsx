@@ -12,6 +12,7 @@ import { TanStackRouterDevtools } from '@tanstack/react-router-devtools'
 import './styles.css'
 import reportWebVitals from './reportWebVitals.ts'
 
+import TaskListHome from './components/TaskListHome.tsx'
 import HomePage from './components/HomePage.tsx'
 import TaskDetail from './components/TaskDetail.tsx'
 
@@ -27,6 +28,12 @@ const rootRoute = createRootRoute({
 const indexRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: '/',
+  component: TaskListHome,
+})
+
+const createTaskRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/create',
   component: HomePage,
 })
 
@@ -36,7 +43,7 @@ const taskDetailRoute = createRoute({
   component: TaskDetail,
 })
 
-const routeTree = rootRoute.addChildren([indexRoute, taskDetailRoute])
+const routeTree = rootRoute.addChildren([indexRoute, createTaskRoute, taskDetailRoute])
 
 const router = createRouter({
   routeTree,
