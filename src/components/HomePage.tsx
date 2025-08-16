@@ -8,6 +8,13 @@ import { saveTask, type MediaFile as StoredMediaFile } from '@/lib/storage'
 import { extractLocationFromImage, formatLocation } from '@/lib/exif'
 import { ProcessingOverlay } from './LoadingSpinner'
 import { ToastContainer, useToast } from './Toast'
+import { 
+  saveMediaToSession, 
+  loadMediaFromSession, 
+  clearMediaSession, 
+  hasMediaInSession,
+  base64ToFile
+} from '@/lib/session'
 
 interface MediaFile {
   file: File
@@ -31,16 +38,62 @@ export default function HomePage() {
   const videoInputRef = useRef<HTMLInputElement>(null)
   const audioInputRef = useRef<HTMLInputElement>(null)
 
-  // Cleanup object URLs when component unmounts
+  // Load persisted media on mount and cleanup on unmount
   useEffect(() => {
+    const loadPersistedMedia = () => {
+      const persistedMedia = loadMediaFromSession()
+      if (persistedMedia.length > 0) {
+        const restoredFiles = persistedMedia.map(persisted => {
+          const file = base64ToFile(persisted.base64, persisted.name, persisted.lastModified)
+          return {
+            file,
+            preview: persisted.base64,
+            type: persisted.type,
+            name: persisted.name
+          }
+        })
+        setMediaFiles(restoredFiles)
+        info('Session restored', `Restored ${persistedMedia.length} uploaded file(s)`)
+      }
+    }
+
+    loadPersistedMedia()
+
     return () => {
       mediaFiles.forEach(media => {
-        if (media.preview) {
+        if (media.preview && media.preview.startsWith('blob:')) {
           URL.revokeObjectURL(media.preview)
         }
       })
     }
-  }, [])
+  }, [info])
+
+  // Save media to session storage whenever mediaFiles changes
+  useEffect(() => {
+    if (mediaFiles.length > 0) {
+      const filesToSave = mediaFiles.map(media => ({
+        file: media.file,
+        type: media.type
+      }))
+      saveMediaToSession(filesToSave)
+    } else {
+      clearMediaSession()
+    }
+  }, [mediaFiles])
+
+  // Warn user before leaving if they have uploaded media
+  useEffect(() => {
+    const handleBeforeUnload = (e: BeforeUnloadEvent) => {
+      if (hasMediaInSession() && !isProcessing) {
+        e.preventDefault()
+        e.returnValue = 'You have uploaded media that will be lost. Are you sure you want to leave?'
+        return e.returnValue
+      }
+    }
+
+    window.addEventListener('beforeunload', handleBeforeUnload)
+    return () => window.removeEventListener('beforeunload', handleBeforeUnload)
+  }, [isProcessing])
 
   const onDrop = useCallback((acceptedFiles: File[], rejectedFiles: any[]) => {
     if (rejectedFiles.length > 0) {
@@ -202,6 +255,10 @@ export default function HomePage() {
 
       setProcessingStep('Saving task...')
       saveTask(task)
+      
+      // Clear session storage since task was successfully created
+      clearMediaSession()
+      
       success('Task created!', 'Your task has been generated successfully')
       navigate({ to: '/task/$taskId', params: { taskId } })
     } catch (err: any) {
@@ -384,16 +441,19 @@ export default function HomePage() {
           onClick={() => {
             // Clean up object URLs to prevent memory leaks
             mediaFiles.forEach(media => {
-              if (media.preview) {
+              if (media.preview && media.preview.startsWith('blob:')) {
                 URL.revokeObjectURL(media.preview)
               }
             })
             setMediaFiles([])
+            clearMediaSession()
             // Reset all file inputs
             if (fileInputRef.current) fileInputRef.current.value = ''
             if (cameraInputRef.current) cameraInputRef.current.value = ''
             if (videoInputRef.current) videoInputRef.current.value = ''
             if (audioInputRef.current) audioInputRef.current.value = ''
+            
+            success('Files cleared', 'All uploaded files have been removed')
           }}
           className="w-full bg-gray-800 border border-gray-700 rounded-xl p-4 flex items-center justify-center gap-2 hover:bg-gray-750 transition-colors mb-4"
           disabled={mediaFiles.length === 0}
