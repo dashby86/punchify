@@ -133,3 +133,24 @@ Please respond with ONLY valid JSON in this format:
   
   return makeRequest()
 }
+
+export async function transcribeAudio(audioFile: File): Promise<string> {
+  const client = getOpenAIClient()
+  
+  try {
+    const transcription = await client.audio.transcriptions.create({
+      file: audioFile,
+      model: 'whisper-1',
+      language: 'en',
+      response_format: 'text'
+    })
+    
+    return transcription
+  } catch (error: any) {
+    console.error('Transcription failed:', error)
+    if (error.status === 429) {
+      throw new Error('OpenAI rate limit exceeded. Please try again later.')
+    }
+    throw new Error('Failed to transcribe audio')
+  }
+}

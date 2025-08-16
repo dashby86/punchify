@@ -3,10 +3,12 @@ import { Link } from '@tanstack/react-router'
 import { FiHome, FiFileText, FiPlus, FiUser, FiChevronRight, FiShare2 } from 'react-icons/fi'
 import { getPublishedTasks, type Task } from '@/lib/storage'
 import { shareTask } from '@/lib/share'
+import { ToastContainer, useToast } from './Toast'
 
 export default function TaskListHome() {
   const [tasks, setTasks] = useState<Task[]>([])
   const [sharingTaskId, setSharingTaskId] = useState<string | null>(null)
+  const { toasts, removeToast, success, error } = useToast()
 
   useEffect(() => {
     const publishedTasks = getPublishedTasks()
@@ -22,9 +24,15 @@ export default function TaskListHome() {
     
     setSharingTaskId(task.id)
     try {
-      await shareTask(task)
+      const shared = await shareTask(task)
+      if (shared) {
+        success('Task shared!', 'Task has been shared successfully')
+      } else {
+        success('Link copied!', 'Task link copied to clipboard')
+      }
     } catch (error) {
       console.error('Share failed:', error)
+      error('Share failed', 'Unable to share task. Please try again.')
     } finally {
       setSharingTaskId(null)
     }
@@ -65,6 +73,8 @@ export default function TaskListHome() {
 
   return (
     <div className="min-h-screen bg-gray-900 text-white">
+      {/* Toast Notifications */}
+      <ToastContainer toasts={toasts} onClose={removeToast} />
       {/* Header with addresses */}
       <div className="px-4 py-3 border-b border-gray-800">
         <div className="flex space-x-4 text-sm">

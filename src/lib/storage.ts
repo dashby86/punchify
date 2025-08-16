@@ -28,30 +28,30 @@ export function saveTask(task: Task): void {
     // Check if we're approaching localStorage limit (typically 5-10MB)
     const storageLimit = 4 * 1024 * 1024 // 4MB to be safe
     if (dataToStore.length > storageLimit) {
-      console.warn('Task storage approaching limit, saving without media')
-      // Save task without media to avoid quota errors
+      console.warn('Task storage approaching limit, media has been compressed but still too large')
+      // Save task without media as last resort
       const taskWithoutMedia = { ...task, media: [] }
       tasks[task.id] = taskWithoutMedia
       localStorage.setItem(TASKS_KEY, JSON.stringify(tasks))
-      return
+      throw new Error('Media files too large for storage - task saved without images')
     }
     
     localStorage.setItem(TASKS_KEY, dataToStore)
   } catch (error: any) {
     if (error.name === 'QuotaExceededError') {
-      console.warn('localStorage quota exceeded, saving task without media')
+      console.warn('localStorage quota exceeded despite compression')
       try {
-        // Retry without media
+        // Retry without media as fallback
         const tasks = getAllTasks()
         const taskWithoutMedia = { ...task, media: [] }
         tasks[task.id] = taskWithoutMedia
         localStorage.setItem(TASKS_KEY, JSON.stringify(tasks))
+        throw new Error('Storage quota exceeded - task saved without media')
       } catch (retryError) {
         console.error('Failed to save task even without media:', retryError)
         throw new Error('Unable to save task - storage full')
       }
     } else {
-      console.error('Failed to save task:', error)
       throw error
     }
   }

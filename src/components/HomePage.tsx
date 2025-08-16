@@ -3,9 +3,10 @@ import { useNavigate, Link } from '@tanstack/react-router'
 import { useDropzone } from 'react-dropzone'
 import { FiCamera, FiVideo, FiMic, FiUpload, FiX, FiChevronLeft } from 'react-icons/fi'
 import { v4 as uuidv4 } from 'uuid'
-import { analyzeTaskFromMedia, getOpenAIClient } from '@/lib/openai'
+import { analyzeTaskFromMedia, getOpenAIClient, transcribeAudio } from '@/lib/openai'
 import { saveTask, type MediaFile as StoredMediaFile } from '@/lib/storage'
 import { extractLocationFromImage, formatLocation } from '@/lib/exif'
+import { optimizeMediaFile, getFileSizeKB } from '@/lib/compress'
 import { ProcessingOverlay } from './LoadingSpinner'
 import { ToastContainer, useToast } from './Toast'
 // Session storage removed - would be better implemented with backend + CDN
@@ -153,29 +154,60 @@ export default function HomePage() {
     setProcessingStep('Preparing media files...')
     
     try {
+      setProcessingStep('Processing media files...')
       const mediaData: StoredMediaFile[] = await Promise.all(
         mediaFiles.map(async (media) => {
-          const base64 = await fileToBase64(media.file)
+          let transcript: string | undefined
+          
+          // Transcribe audio and video files
+          if (media.type === 'audio' || media.type === 'video') {
+            try {
+              setProcessingStep(`Transcribing ${media.type}...`)
+              transcript = await transcribeAudio(media.file)
+              info('Transcription complete', `Generated transcript for ${media.name}`)
+            } catch (error) {
+              console.error('Transcription failed:', error)
+              warning('Transcription failed', `Could not transcribe ${media.name}`)
+            }
+          }
+          
+          setProcessingStep('Compressing media files...')
+          const compressedBase64 = await optimizeMediaFile(media.file, media.type)
+          const sizeKB = getFileSizeKB(compressedBase64)
+          console.log(`Compressed ${media.name}: ${sizeKB}KB`)
           return {
-            url: base64,
+            url: compressedBase64,
             type: media.type,
+            transcript
           }
         })
       )
 
-      // Prepare media inputs with actual base64 data for GPT-4 Vision
-      setProcessingStep('Encoding media files...')
+      // Prepare media inputs with compressed data for GPT-4 Vision analysis
+      setProcessingStep('Preparing AI analysis...')
       const mediaInputs = await Promise.all(
-        mediaFiles.map(async (media) => {
-          const base64 = await fileToBase64(media.file)
+        mediaFiles.map(async (media, index) => {
+          // Use the already compressed data from mediaData
+          const matchingMedia = mediaData[index]
+          const base64 = matchingMedia?.url || await optimizeMediaFile(media.file, media.type)
+          
+          let description = undefined
+          if (media.type === 'video') {
+            description = `A video showing work that needs to be done (${media.file.name})`
+            if (matchingMedia?.transcript) {
+              description += `. Video transcript: "${matchingMedia.transcript}"`
+            }
+          } else if (media.type === 'audio') {
+            description = `An audio recording describing work that needs to be done (${media.file.name})`
+            if (matchingMedia?.transcript) {
+              description += `. Audio transcript: "${matchingMedia.transcript}"`
+            }
+          }
+          
           return {
             base64,
             type: media.type,
-            description: media.type === 'video' 
-              ? `A video showing work that needs to be done (${media.file.name})`
-              : media.type === 'audio'
-              ? `An audio recording describing work that needs to be done (${media.file.name})`
-              : undefined
+            description
           }
         })
       )

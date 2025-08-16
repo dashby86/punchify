@@ -1,8 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useParams, Link, useNavigate } from '@tanstack/react-router'
-import { FiMapPin, FiUser, FiFileText, FiArrowLeft, FiChevronDown, FiTrash2, FiCamera, FiVideo, FiMic, FiUpload, FiShare2, FiCopy, FiCheck, FiMaximize2 } from 'react-icons/fi'
+import { FiMapPin, FiUser, FiFileText, FiArrowLeft, FiChevronDown, FiTrash2, FiCamera, FiVideo, FiMic, FiUpload, FiMaximize2 } from 'react-icons/fi'
 import { getTask, publishTask, deleteTask, type Task } from '@/lib/storage'
-import { shareTask, copyToClipboard, generateShareableLink } from '@/lib/share'
 import MediaViewer from './MediaViewer'
 
 export default function TaskDetail() {
@@ -10,8 +9,6 @@ export default function TaskDetail() {
   const navigate = useNavigate()
   const [task, setTask] = useState<Task | null>(null)
   const [loading, setLoading] = useState(true)
-  const [shareStatus, setShareStatus] = useState<'idle' | 'copied' | 'shared'>('idle')
-  const [isSharing, setIsSharing] = useState(false)
   const [viewerOpen, setViewerOpen] = useState(false)
   const [viewerIndex, setViewerIndex] = useState(0)
 
@@ -21,12 +18,6 @@ export default function TaskDetail() {
     setLoading(false)
   }, [taskId])
 
-  useEffect(() => {
-    if (shareStatus !== 'idle') {
-      const timer = setTimeout(() => setShareStatus('idle'), 3000)
-      return () => clearTimeout(timer)
-    }
-  }, [shareStatus])
 
 
   const handlePublish = () => {
@@ -43,31 +34,6 @@ export default function TaskDetail() {
     }
   }
 
-  const handleShare = async () => {
-    if (!task || isSharing) return
-    
-    setIsSharing(true)
-    try {
-      const shared = await shareTask(task)
-      setShareStatus(shared ? 'shared' : 'copied')
-    } catch (error) {
-      console.error('Share failed:', error)
-      setShareStatus('idle')
-    } finally {
-      setIsSharing(false)
-    }
-  }
-
-  const handleCopyLink = async () => {
-    if (!task) return
-    
-    try {
-      await copyToClipboard(generateShareableLink(task.id))
-      setShareStatus('copied')
-    } catch (error) {
-      console.error('Copy failed:', error)
-    }
-  }
 
   if (loading) {
     return (
@@ -111,8 +77,8 @@ export default function TaskDetail() {
       </div>
 
       <div className="p-4 space-y-4">
-        {/* Video Thumbnail */}
-        {task.media.length > 0 && task.media[0].type === 'video' && (
+        {/* Media Thumbnail */}
+        {task.media.length > 0 && (
           <div 
             className="bg-white rounded-xl overflow-hidden shadow-sm cursor-pointer hover:shadow-md transition-shadow"
             onClick={() => {
@@ -121,14 +87,16 @@ export default function TaskDetail() {
             }}
           >
             <div className="relative">
-              <video 
+              <img 
                 src={task.media[0].url}
+                alt={`${task.media[0].type} thumbnail`}
                 className="w-full h-48 object-cover"
-                poster=""
               />
               <div className="absolute inset-0 flex items-center justify-center">
                 <div className="w-12 h-12 bg-white/80 rounded-full flex items-center justify-center">
-                  <FiVideo className="w-6 h-6 text-gray-700" />
+                  {task.media[0].type === 'video' && <FiVideo className="w-6 h-6 text-gray-700" />}
+                  {task.media[0].type === 'image' && <FiCamera className="w-6 h-6 text-gray-700" />}
+                  {task.media[0].type === 'audio' && <FiMic className="w-6 h-6 text-gray-700" />}
                 </div>
               </div>
               <div className="absolute top-2 right-2">
@@ -138,7 +106,11 @@ export default function TaskDetail() {
               </div>
             </div>
             <div className="p-3">
-              <p className="text-sm font-medium text-gray-900">Video - Tap to view</p>
+              <p className="text-sm font-medium text-gray-900">
+                {task.media[0].type === 'video' ? 'Video thumbnail - Original compressed for storage' : 
+                 task.media[0].type === 'image' ? 'Image - Tap to view' :
+                 'Audio - Tap to view'}
+              </p>
             </div>
           </div>
         )}
@@ -296,40 +268,6 @@ export default function TaskDetail() {
 
         {/* Action Buttons */}
         <div className="space-y-3">
-          {/* Share Buttons */}
-          <div className="flex gap-3">
-            <button 
-              onClick={handleShare}
-              disabled={isSharing}
-              className="flex-1 py-3 bg-blue-600 text-white rounded-xl font-medium flex items-center justify-center gap-2 hover:bg-blue-700 transition-colors disabled:opacity-50"
-            >
-              {shareStatus === 'shared' ? (
-                <>
-                  <FiCheck className="w-5 h-5" />
-                  Shared!
-                </>
-              ) : shareStatus === 'copied' ? (
-                <>
-                  <FiCheck className="w-5 h-5" />
-                  Link Copied!
-                </>
-              ) : (
-                <>
-                  <FiShare2 className="w-5 h-5" />
-                  Share
-                </>
-              )}
-            </button>
-            
-            <button 
-              onClick={handleCopyLink}
-              className="py-3 px-4 bg-gray-600 text-white rounded-xl hover:bg-gray-700 transition-colors"
-              title="Copy link"
-            >
-              <FiCopy className="w-5 h-5" />
-            </button>
-          </div>
-
           <button 
             onClick={handleDiscard}
             className="w-full py-3 bg-red-600 text-white rounded-xl font-medium flex items-center justify-center gap-2 hover:bg-red-700 transition-colors"
