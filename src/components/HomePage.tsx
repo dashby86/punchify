@@ -9,7 +9,8 @@ import { extractLocationFromImage, formatLocation } from '@/lib/exif'
 import { optimizeMediaFile, getFileSizeKB, extractVideoFrames } from '@/lib/compress'
 import { storeVideoWithFallback } from '@/lib/videoStorage'
 import { ProcessingOverlay } from './LoadingSpinner'
-import { SnackbarContainer, useSnackbar } from './Snackbar'
+import { SnackbarContainer } from './Snackbar'
+import { useSnackbar } from '@/hooks/useSnackbar'
 // Session storage removed - would be better implemented with backend + CDN
 
 interface MediaFile {

@@ -3,7 +3,8 @@ import { Link } from '@tanstack/react-router'
 import { FiHome, FiFileText, FiPlus, FiShare2 } from 'react-icons/fi'
 import { getUniqueAddresses, getTasksByAddress, type Task } from '@/lib/storage'
 import { shareTask } from '@/lib/share'
-import { SnackbarContainer, useSnackbar } from './Snackbar'
+import { SnackbarContainer } from './Snackbar'
+import { useSnackbar } from '@/hooks/useSnackbar'
 
 export default function TaskListHome() {
   const [tasks, setTasks] = useState<Task[]>([])
