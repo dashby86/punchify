@@ -188,6 +188,7 @@ export default function HomePage() {
           
           const sizeKB = getFileSizeKB(processedBase64)
           console.log(`Processed ${media.name}: ${sizeKB}KB`)
+          console.log(`Transcript for ${media.name}:`, transcript)
           return {
             url: processedBase64,
             type: media.type,

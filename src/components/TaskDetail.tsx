@@ -14,6 +14,9 @@ export default function TaskDetail() {
 
   useEffect(() => {
     const fetchedTask = getTask(taskId)
+    console.log('Fetched task:', fetchedTask)
+    console.log('Task media:', fetchedTask?.media)
+    console.log('Media with transcripts:', fetchedTask?.media?.filter(m => m.transcript))
     setTask(fetchedTask)
     setLoading(false)
   }, [taskId])

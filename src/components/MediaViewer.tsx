@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { FiX, FiChevronLeft, FiChevronRight, FiDownload } from 'react-icons/fi'
+import { FiX, FiChevronLeft, FiChevronRight, FiDownload, FiVideo } from 'react-icons/fi'
 import { type MediaFile } from '@/lib/storage'
 
 interface MediaViewerProps {
@@ -119,7 +119,7 @@ export default function MediaViewer({ media, initialIndex = 0, onClose }: MediaV
         )}
 
         {/* Media Display */}
-        <div className="max-w-full max-h-full flex items-center justify-center">
+        <div className="max-w-full max-h-full flex flex-col items-center justify-center">
           {currentMedia.type === 'image' ? (
             <img 
               src={currentMedia.url}
@@ -128,13 +128,36 @@ export default function MediaViewer({ media, initialIndex = 0, onClose }: MediaV
               draggable={false}
             />
           ) : currentMedia.type === 'video' ? (
-            <video
-              src={currentMedia.url}
-              controls
-              autoPlay
-              className="max-w-full max-h-full"
-              playsInline
-            />
+            currentMedia.url.startsWith('data:video/') ? (
+              <video
+                src={currentMedia.url}
+                controls
+                autoPlay
+                className="max-w-full max-h-full"
+                playsInline
+              />
+            ) : (
+              <div className="flex flex-col items-center">
+                <img 
+                  src={currentMedia.url}
+                  alt="Video thumbnail"
+                  className="max-w-full max-h-[60vh] object-contain select-none mb-4"
+                  draggable={false}
+                />
+                <div className="bg-gray-900/80 backdrop-blur rounded-lg p-4 max-w-2xl">
+                  <p className="text-white text-sm mb-2">
+                    <FiVideo className="inline w-4 h-4 mr-2" />
+                    Video frame from original recording
+                  </p>
+                  {currentMedia.transcript && (
+                    <div className="mt-3 p-3 bg-gray-800/50 rounded">
+                      <p className="text-gray-400 text-sm mb-1">Video Transcript:</p>
+                      <p className="text-white text-sm italic">"{currentMedia.transcript}"</p>
+                    </div>
+                  )}
+                </div>
+              </div>
+            )
           ) : (
             <div className="bg-gray-800 rounded-2xl p-8 max-w-md w-full">
               <div className="text-white text-center mb-6">
