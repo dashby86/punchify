@@ -1,4 +1,4 @@
-import { useState, useCallback, useRef } from 'react'
+import { useState, useCallback, useRef, useEffect } from 'react'
 import { useNavigate } from '@tanstack/react-router'
 import { useDropzone } from 'react-dropzone'
 import { FiCamera, FiVideo, FiMic, FiUpload, FiX, FiSettings, FiChevronLeft } from 'react-icons/fi'
@@ -26,6 +26,17 @@ export default function HomePage() {
   const videoInputRef = useRef<HTMLInputElement>(null)
   const audioInputRef = useRef<HTMLInputElement>(null)
 
+  // Cleanup object URLs when component unmounts
+  useEffect(() => {
+    return () => {
+      mediaFiles.forEach(media => {
+        if (media.preview) {
+          URL.revokeObjectURL(media.preview)
+        }
+      })
+    }
+  }, [])
+
   const onDrop = useCallback((acceptedFiles: File[]) => {
     const newFiles = acceptedFiles.map(file => ({
       file,
@@ -46,11 +57,19 @@ export default function HomePage() {
     },
     maxFiles: 10,
     multiple: true,
-    noClick: true
+    noClick: true,
+    disabled: false
   })
 
   const removeFile = (index: number) => {
-    setMediaFiles(prev => prev.filter((_, i) => i !== index))
+    setMediaFiles(prev => {
+      const newFiles = prev.filter((_, i) => i !== index)
+      // Clean up the object URL for the removed file
+      if (prev[index]?.preview) {
+        URL.revokeObjectURL(prev[index].preview)
+      }
+      return newFiles
+    })
   }
 
   const handleSaveApiKey = () => {
@@ -77,6 +96,8 @@ export default function HomePage() {
   const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(event.target.files || [])
     onDrop(files)
+    // Reset the input value to allow re-selecting the same file
+    event.target.value = ''
   }
 
   const fileToBase64 = (file: File): Promise<string> => {
@@ -258,18 +279,20 @@ export default function HomePage() {
             <div className="mt-4 space-y-2">
               {mediaFiles.map((media, index) => (
                 <div key={index} className="flex items-center justify-between bg-gray-800 rounded-lg p-3 border border-gray-700">
-                  <div className="flex items-center gap-3">
-                    {media.type === 'image' && <FiCamera className="w-5 h-5 text-gray-400" />}
-                    {media.type === 'video' && <FiVideo className="w-5 h-5 text-gray-400" />}
-                    {media.type === 'audio' && <FiMic className="w-5 h-5 text-gray-400" />}
-                    <span className="text-sm text-gray-300 truncate">{media.name}</span>
+                  <div className="flex items-center gap-3 min-w-0 flex-1">
+                    {media.type === 'image' && <FiCamera className="w-5 h-5 text-gray-400 flex-shrink-0" />}
+                    {media.type === 'video' && <FiVideo className="w-5 h-5 text-gray-400 flex-shrink-0" />}
+                    {media.type === 'audio' && <FiMic className="w-5 h-5 text-gray-400 flex-shrink-0" />}
+                    <span className="text-sm text-gray-300 truncate flex-1 min-w-0" title={media.name}>
+                      {media.name}
+                    </span>
                     {media.type === 'audio' && (
-                      <span className="text-xs text-gray-500">0:34</span>
+                      <span className="text-xs text-gray-500 flex-shrink-0">0:34</span>
                     )}
                   </div>
                   <button
                     onClick={() => removeFile(index)}
-                    className="p-1 text-gray-400 hover:text-red-400"
+                    className="p-1 text-gray-400 hover:text-red-400 ml-2 flex-shrink-0"
                   >
                     <FiX className="w-4 h-4" />
                   </button>
@@ -281,7 +304,20 @@ export default function HomePage() {
 
         {/* Discard Button */}
         <button
-          onClick={() => setMediaFiles([])}
+          onClick={() => {
+            // Clean up object URLs to prevent memory leaks
+            mediaFiles.forEach(media => {
+              if (media.preview) {
+                URL.revokeObjectURL(media.preview)
+              }
+            })
+            setMediaFiles([])
+            // Reset all file inputs
+            if (fileInputRef.current) fileInputRef.current.value = ''
+            if (cameraInputRef.current) cameraInputRef.current.value = ''
+            if (videoInputRef.current) videoInputRef.current.value = ''
+            if (audioInputRef.current) audioInputRef.current.value = ''
+          }}
           className="w-full bg-gray-800 border border-gray-700 rounded-xl p-4 flex items-center justify-center gap-2 hover:bg-gray-750 transition-colors mb-4"
           disabled={mediaFiles.length === 0}
         >
