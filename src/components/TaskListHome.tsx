@@ -1,22 +1,39 @@
 import { useState, useEffect } from 'react'
 import { Link } from '@tanstack/react-router'
 import { FiHome, FiFileText, FiPlus, FiUser, FiChevronRight, FiShare2 } from 'react-icons/fi'
-import { getPublishedTasks, type Task } from '@/lib/storage'
+import { getPublishedTasks, getUniqueAddresses, getTasksByAddress, type Task } from '@/lib/storage'
 import { shareTask } from '@/lib/share'
 import { ToastContainer, useToast } from './Toast'
 
 export default function TaskListHome() {
   const [tasks, setTasks] = useState<Task[]>([])
+  const [addresses, setAddresses] = useState<string[]>([])
+  const [selectedAddress, setSelectedAddress] = useState<string | null>(null)
   const [sharingTaskId, setSharingTaskId] = useState<string | null>(null)
   const { toasts, removeToast, success, error } = useToast()
 
   useEffect(() => {
-    const publishedTasks = getPublishedTasks()
-    const taskList = Object.values(publishedTasks).sort((a, b) => 
-      new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
-    )
-    setTasks(taskList)
-  }, [])
+    console.log('=== TaskListHome useEffect ====')
+    console.log('Selected address:', selectedAddress)
+    
+    // Load unique addresses for tabs
+    const uniqueAddresses = getUniqueAddresses()
+    setAddresses(uniqueAddresses)
+    
+    // Load tasks based on selected address
+    const filteredTasks = getTasksByAddress(selectedAddress || undefined)
+    setTasks(filteredTasks)
+    
+    console.log('Available unique addresses:', uniqueAddresses)
+    console.log('Tasks loaded for current filter:', filteredTasks.length)
+    
+    // Debug: show each task's address info
+    const allTasks = getTasksByAddress()
+    console.log('All tasks with address info:')
+    allTasks.forEach(task => {
+      console.log(`- Task ${task.id}: address="${task.address || 'none'}"`)
+    })
+  }, [selectedAddress])
 
   const handleShare = async (task: Task, e: React.MouseEvent) => {
     e.preventDefault() // Prevent navigation to task detail
@@ -75,24 +92,63 @@ export default function TaskListHome() {
     <div className="min-h-screen bg-gray-900 text-white">
       {/* Toast Notifications */}
       <ToastContainer toasts={toasts} onClose={removeToast} />
-      {/* Header with addresses */}
-      <div className="px-4 py-3 border-b border-gray-800">
-        <div className="flex space-x-4 text-sm">
-          <span className="text-white font-medium">180 Maiden Lane</span>
-          <span className="text-gray-400">1290 Main Street</span>
-          <span className="text-gray-400">98 5th Avenue</span>
-          <span className="text-gray-400">231 14th</span>
+      
+      {/* Address Tabs */}
+      {addresses.length > 0 && (
+        <div className="px-4 py-3 border-b border-gray-800">
+          <div className="flex space-x-4 text-sm overflow-x-auto">
+            <button
+              onClick={() => setSelectedAddress(null)}
+              className={`whitespace-nowrap px-3 py-1 rounded-full transition-colors ${
+                selectedAddress === null
+                  ? 'bg-blue-600 text-white font-medium'
+                  : 'text-gray-400 hover:text-white'
+              }`}
+            >
+              All Tasks
+            </button>
+            {addresses.map((address) => (
+              <button
+                key={address}
+                onClick={() => setSelectedAddress(address)}
+                className={`whitespace-nowrap px-3 py-1 rounded-full transition-colors ${
+                  selectedAddress === address
+                    ? 'bg-blue-600 text-white font-medium'
+                    : 'text-gray-400 hover:text-white'
+                }`}
+                title={`Full address: ${address}`}
+              >
+                {address.length > 20 ? `${address.substring(0, 17)}...` : address}
+              </button>
+            ))}
+          </div>
         </div>
-      </div>
+      )}
 
       {/* Task List */}
       <div className="flex-1">
+        {/* Selected Address Header */}
+        {selectedAddress && (
+          <div className="px-4 py-3 bg-gray-800/50">
+            <h2 className="text-lg font-medium text-white">
+              {selectedAddress}
+            </h2>
+            <p className="text-sm text-gray-400">
+              {tasks.length} task{tasks.length !== 1 ? 's' : ''} at this location
+            </p>
+          </div>
+        )}
         {tasks.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-20">
             <FiFileText className="w-16 h-16 text-gray-600 mb-4" />
-            <h3 className="text-lg font-medium text-gray-400 mb-2">No tasks yet</h3>
+            <h3 className="text-lg font-medium text-gray-400 mb-2">
+              {selectedAddress ? 'No tasks at this location' : 'No tasks yet'}
+            </h3>
             <p className="text-gray-500 text-center px-4">
-              Create your first task by tapping the + button below
+              {selectedAddress 
+                ? 'No tasks found for this address. Try another location or create a new task.'
+                : 'Create your first task by tapping the + button below'
+              }
             </p>
           </div>
         ) : (
@@ -118,24 +174,9 @@ export default function TaskListHome() {
                       >
                         <FiShare2 className="w-4 h-4" />
                       </button>
-                      <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${getStatusColor('In Progress')}`}>
-                        In Progress
-                      </span>
                     </div>
                   </div>
 
-                  {/* Assignor and Assignee */}
-                  <div className="flex items-center mb-3">
-                    <div className="w-8 h-8 bg-blue-500 rounded-full flex items-center justify-center mr-3">
-                      <span className="text-white text-sm font-medium">S</span>
-                    </div>
-                    <span className="text-gray-300 text-sm">Sarah Martinez</span>
-                    <FiChevronRight className="w-4 h-4 text-gray-500 mx-2" />
-                    <div className="w-8 h-8 bg-green-500 rounded-full flex items-center justify-center mr-3">
-                      <span className="text-white text-sm font-medium">M</span>
-                    </div>
-                    <span className="text-gray-300 text-sm">Mike Thompson</span>
-                  </div>
 
                   {/* Summary */}
                   <div className="mb-3">
@@ -156,26 +197,16 @@ export default function TaskListHome() {
                       <p className="text-gray-300">{task.location || 'Not specified'}</p>
                     </div>
                     <div>
-                      <p className="text-gray-500">Project</p>
-                      <p className="text-gray-300">180 Maiden Lane</p>
-                    </div>
-                  </div>
-
-                  <div className="text-sm mb-3">
-                    <p className="text-gray-500">Address</p>
-                    <p className="text-gray-300">180 Maiden Lane, New York, NY 10012</p>
-                  </div>
-
-                  {/* Trade and Due Date */}
-                  <div className="grid grid-cols-2 gap-4 text-sm mb-4">
-                    <div>
                       <p className="text-gray-500">Trade</p>
                       <p className="text-gray-300">{task.professional || 'General'}</p>
                     </div>
-                    <div>
-                      <p className="text-gray-500">Due</p>
-                      <p className="text-gray-300">{formatDate(task.createdAt)}</p>
-                    </div>
+                  </div>
+
+
+                  {/* Created Date */}
+                  <div className="text-sm mb-4">
+                    <p className="text-gray-500">Created</p>
+                    <p className="text-gray-300">{formatDate(task.createdAt)}</p>
                   </div>
 
                   {/* Media thumbnails */}
@@ -211,26 +242,11 @@ export default function TaskListHome() {
             <span className="text-xs text-blue-500">Home</span>
           </button>
           
-          <button className="flex flex-col items-center py-2">
-            <FiFileText className="w-6 h-6 mb-1 text-gray-400" />
-            <span className="text-xs text-gray-400">Projects</span>
-          </button>
-          
           <Link to="/create" className="flex flex-col items-center py-2">
             <div className="w-10 h-10 bg-blue-600 rounded-full flex items-center justify-center mb-1">
               <FiPlus className="w-6 h-6 text-white" />
             </div>
           </Link>
-          
-          <button className="flex flex-col items-center py-2">
-            <FiFileText className="w-6 h-6 mb-1 text-gray-400" />
-            <span className="text-xs text-gray-400">Feed</span>
-          </button>
-          
-          <button className="flex flex-col items-center py-2">
-            <FiUser className="w-6 h-6 mb-1 text-gray-400" />
-            <span className="text-xs text-gray-400">Profile</span>
-          </button>
         </div>
       </div>
 

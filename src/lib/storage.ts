@@ -11,7 +11,12 @@ interface Task {
   summary: string
   description: string
   location?: string
+  address?: string
   professional?: string
+  priority?: 'low' | 'medium' | 'high'
+  assignor?: string
+  assignee?: string
+  dueDate?: string
   media: MediaFile[]
   createdAt: string
   status: 'draft' | 'published'
@@ -112,6 +117,72 @@ export function deleteTask(taskId: string): void {
   const tasks = getAllTasks()
   delete tasks[taskId]
   localStorage.setItem(TASKS_KEY, JSON.stringify(tasks))
+}
+
+export function updateTask(taskId: string, updates: Partial<Task>): void {
+  const tasks = getAllTasks()
+  if (tasks[taskId]) {
+    tasks[taskId] = { ...tasks[taskId], ...updates }
+    localStorage.setItem(TASKS_KEY, JSON.stringify(tasks))
+  }
+}
+
+function parseStreetAddress(fullAddress: string): string {
+  // Parse address to get just the street (everything up to first comma)
+  const firstCommaIndex = fullAddress.indexOf(',')
+  if (firstCommaIndex > 0) {
+    return fullAddress.substring(0, firstCommaIndex).trim()
+  }
+  return fullAddress.trim()
+}
+
+export function getUniqueAddresses(): string[] {
+  const tasks = getPublishedTasks()
+  const addresses = new Set<string>()
+  
+  Object.values(tasks).forEach(task => {
+    if (task.address && task.address.trim()) {
+      const streetAddress = parseStreetAddress(task.address)
+      addresses.add(streetAddress)
+    }
+  })
+  
+  return Array.from(addresses).sort()
+}
+
+export function getTasksByAddress(address?: string): Task[] {
+  const tasks = getPublishedTasks()
+  const taskList = Object.values(tasks)
+  
+  console.log('getTasksByAddress called with:', address)
+  console.log('Available tasks:', taskList.length)
+  
+  if (!address) {
+    // Return all tasks if no address filter
+    console.log('No address filter - returning all tasks')
+    return taskList.sort((a, b) => 
+      new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+    )
+  }
+  
+  // Filter by street address (up to first comma)
+  const filteredTasks = taskList.filter(task => {
+    if (!task.address) {
+      console.log('Task has no address:', task.id)
+      return false
+    }
+    
+    const taskStreetAddress = parseStreetAddress(task.address)
+    console.log(`Task ${task.id}: full="${task.address}" street="${taskStreetAddress}" comparing to "${address}"`)
+    
+    return taskStreetAddress === address
+  })
+  
+  console.log(`Filtered tasks for "${address}":`, filteredTasks.length)
+  
+  return filteredTasks.sort((a, b) => 
+    new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+  )
 }
 
 export { type Task, type MediaFile }

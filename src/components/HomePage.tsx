@@ -55,6 +55,34 @@ export default function HomePage() {
     return () => window.removeEventListener('beforeunload', handleBeforeUnload)
   }, [mediaFiles.length, isProcessing])
 
+  // Handle focus/visibility changes to ensure responsiveness
+  useEffect(() => {
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible') {
+        // Page became visible again (user returned from camera)
+        // Ensure no elements are stuck in focus
+        if (document.activeElement instanceof HTMLElement) {
+          document.activeElement.blur()
+        }
+      }
+    }
+
+    const handleFocus = () => {
+      // Page regained focus - ensure responsiveness
+      if (document.activeElement instanceof HTMLElement) {
+        document.activeElement.blur()
+      }
+    }
+
+    document.addEventListener('visibilitychange', handleVisibilityChange)
+    window.addEventListener('focus', handleFocus)
+    
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibilityChange)
+      window.removeEventListener('focus', handleFocus)
+    }
+  }, [])
+
   const onDrop = useCallback((acceptedFiles: File[], rejectedFiles: any[]) => {
     if (rejectedFiles.length > 0) {
       const errors = rejectedFiles.map(f => f.errors[0]?.message || 'Invalid file').join(', ')
@@ -100,26 +128,40 @@ export default function HomePage() {
 
   const handleCameraCapture = (e?: React.MouseEvent) => {
     e?.preventDefault()
-    cameraInputRef.current?.click()
+    if (cameraInputRef.current) {
+      cameraInputRef.current.click()
+    }
   }
 
   const handleVideoCapture = (e?: React.MouseEvent) => {
     e?.preventDefault()
-    videoInputRef.current?.click()
+    if (videoInputRef.current) {
+      videoInputRef.current.click()
+    }
   }
-
 
   const handleUploadExisting = (e?: React.MouseEvent) => {
     e?.preventDefault()
-    fileInputRef.current?.click()
+    if (fileInputRef.current) {
+      fileInputRef.current.click()
+    }
   }
 
   const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     event.preventDefault() // Prevent any form submission
     const files = Array.from(event.target.files || [])
-    onDrop(files, [])  // Pass empty array for rejected files
+    
+    if (files.length > 0) {
+      onDrop(files, [])  // Pass empty array for rejected files
+    }
+    
     // Reset the input value to allow re-selecting the same file
     event.target.value = ''
+    
+    // Ensure the page remains responsive by removing focus
+    if (document.activeElement instanceof HTMLElement) {
+      document.activeElement.blur()
+    }
   }
 
   const fileToBase64 = (file: File): Promise<string> => {
@@ -248,15 +290,20 @@ export default function HomePage() {
       setProcessingStep('Analyzing with AI...')
       const taskData = await analyzeTaskFromMedia(allMediaInputs)
       
-      // Try to extract location from images
+      // Try to extract location and address from images
       setProcessingStep('Extracting location data...')
       let extractedLocation = null
+      let extractedAddress = null
       for (const media of mediaFiles) {
         if (media.type === 'image') {
           const locationData = await extractLocationFromImage(media.file)
           if (locationData) {
             extractedLocation = formatLocation(locationData)
+            extractedAddress = locationData.address || null
             info('Location detected', `Found GPS coordinates in image`)
+            if (extractedAddress) {
+              info('Address found', `Extracted address: ${extractedAddress}`)
+            }
             break // Use the first image with location data
           }
         }
@@ -267,6 +314,10 @@ export default function HomePage() {
         ...taskData,
         // Use extracted location if AI didn't detect one
         location: taskData.location || extractedLocation || 'Not specified',
+        // Use extracted address from GPS metadata
+        address: extractedAddress || undefined,
+        // Set current user as assignor by default
+        assignor: 'User',
         media: mediaData,
         createdAt: new Date().toISOString(),
         status: 'draft' as const
@@ -417,6 +468,7 @@ export default function HomePage() {
               ))}
             </div>
           )}
+
         </div>
 
         {/* Discard Button */}
