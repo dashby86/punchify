@@ -9,8 +9,10 @@ const SESSION_KEY = 'task_creator_session_media'
 
 export function saveMediaToSession(files: { file: File; type: 'image' | 'video' | 'audio' }[]): Promise<void> {
   return new Promise(async (resolve) => {
+    let persistedFiles: PersistedMediaFile[] = []
+    
     try {
-      const persistedFiles: PersistedMediaFile[] = await Promise.all(
+      persistedFiles = await Promise.all(
         files.map(async ({ file, type }) => {
           const base64 = await fileToBase64(file)
           return {
@@ -33,13 +35,14 @@ export function saveMediaToSession(files: { file: File; type: 'image' | 'video' 
       
       sessionStorage.setItem(SESSION_KEY, dataToStore)
       resolve()
-    } catch (error) {
+    } catch (error: any) {
       if (error.name === 'QuotaExceededError') {
         console.warn('Session storage quota exceeded, clearing and retrying...')
         try {
           // Clear session storage and try again with just the new files
           clearMediaSession()
-          sessionStorage.setItem(SESSION_KEY, JSON.stringify(persistedFiles))
+          const dataToStore = JSON.stringify(persistedFiles)
+          sessionStorage.setItem(SESSION_KEY, dataToStore)
         } catch (retryError) {
           console.error('Failed to save even after clearing session storage:', retryError)
         }

@@ -19,9 +19,42 @@ interface Task {
 const TASKS_KEY = 'task_creator_tasks'
 
 export function saveTask(task: Task): void {
-  const tasks = getAllTasks()
-  tasks[task.id] = task
-  localStorage.setItem(TASKS_KEY, JSON.stringify(tasks))
+  try {
+    const tasks = getAllTasks()
+    tasks[task.id] = task
+    
+    const dataToStore = JSON.stringify(tasks)
+    
+    // Check if we're approaching localStorage limit (typically 5-10MB)
+    const storageLimit = 4 * 1024 * 1024 // 4MB to be safe
+    if (dataToStore.length > storageLimit) {
+      console.warn('Task storage approaching limit, saving without media')
+      // Save task without media to avoid quota errors
+      const taskWithoutMedia = { ...task, media: [] }
+      tasks[task.id] = taskWithoutMedia
+      localStorage.setItem(TASKS_KEY, JSON.stringify(tasks))
+      return
+    }
+    
+    localStorage.setItem(TASKS_KEY, dataToStore)
+  } catch (error: any) {
+    if (error.name === 'QuotaExceededError') {
+      console.warn('localStorage quota exceeded, saving task without media')
+      try {
+        // Retry without media
+        const tasks = getAllTasks()
+        const taskWithoutMedia = { ...task, media: [] }
+        tasks[task.id] = taskWithoutMedia
+        localStorage.setItem(TASKS_KEY, JSON.stringify(tasks))
+      } catch (retryError) {
+        console.error('Failed to save task even without media:', retryError)
+        throw new Error('Unable to save task - storage full')
+      }
+    } else {
+      console.error('Failed to save task:', error)
+      throw error
+    }
+  }
 }
 
 export function getTask(taskId: string): Task | null {

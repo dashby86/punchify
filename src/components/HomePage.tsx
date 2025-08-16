@@ -209,10 +209,18 @@ export default function HomePage() {
       }
 
       setProcessingStep('Saving task...')
-      saveTask(task)
-      
-      success('Task created!', 'Your task has been generated successfully')
-      navigate({ to: '/task/$taskId', params: { taskId } })
+      try {
+        saveTask(task)
+        success('Task created!', 'Your task has been generated successfully')
+        navigate({ to: '/task/$taskId', params: { taskId } })
+      } catch (saveError: any) {
+        if (saveError.message?.includes('storage full')) {
+          warning('Task saved', 'Media files too large for storage - task saved without images')
+          navigate({ to: '/task/$taskId', params: { taskId } })
+        } else {
+          throw saveError
+        }
+      }
     } catch (err: any) {
       console.error('Error processing task:', err)
       
