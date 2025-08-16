@@ -5,6 +5,9 @@ import { FiCamera, FiVideo, FiMic, FiUpload, FiX, FiSettings, FiChevronLeft } fr
 import { v4 as uuidv4 } from 'uuid'
 import { analyzeTaskFromMedia, getOpenAIClient } from '@/lib/openai'
 import { saveTask, type MediaFile as StoredMediaFile } from '@/lib/storage'
+import { extractLocationFromImage, formatLocation } from '@/lib/exif'
+import { ProcessingOverlay } from './LoadingSpinner'
+import { ToastContainer, useToast } from './Toast'
 
 interface MediaFile {
   file: File
@@ -17,10 +20,12 @@ export default function HomePage() {
   const navigate = useNavigate()
   const [mediaFiles, setMediaFiles] = useState<MediaFile[]>([])
   const [isProcessing, setIsProcessing] = useState(false)
+  const [processingStep, setProcessingStep] = useState('')
   const [apiKey, setApiKey] = useState(() => 
     localStorage.getItem('openai_api_key') || ''
   )
   const [showSettings, setShowSettings] = useState(false)
+  const { toasts, removeToast, success, error, warning, info } = useToast()
   const fileInputRef = useRef<HTMLInputElement>(null)
   const cameraInputRef = useRef<HTMLInputElement>(null)
   const videoInputRef = useRef<HTMLInputElement>(null)
@@ -37,16 +42,24 @@ export default function HomePage() {
     }
   }, [])
 
-  const onDrop = useCallback((acceptedFiles: File[]) => {
-    const newFiles = acceptedFiles.map(file => ({
-      file,
-      preview: URL.createObjectURL(file),
-      type: file.type.startsWith('video/') ? 'video' as const : 
-            file.type.startsWith('audio/') ? 'audio' as const : 'image' as const,
-      name: file.name
-    }))
-    setMediaFiles(prev => [...prev, ...newFiles])
-  }, [])
+  const onDrop = useCallback((acceptedFiles: File[], rejectedFiles: any[]) => {
+    if (rejectedFiles.length > 0) {
+      const errors = rejectedFiles.map(f => f.errors[0]?.message || 'Invalid file').join(', ')
+      error('Files rejected', errors)
+    }
+
+    if (acceptedFiles.length > 0) {
+      const newFiles = acceptedFiles.map(file => ({
+        file,
+        preview: URL.createObjectURL(file),
+        type: file.type.startsWith('video/') ? 'video' as const : 
+              file.type.startsWith('audio/') ? 'audio' as const : 'image' as const,
+        name: file.name
+      }))
+      setMediaFiles(prev => [...prev, ...newFiles])
+      success(`Added ${acceptedFiles.length} file(s)`)
+    }
+  }, [success, error])
 
   const { getRootProps, getInputProps, isDragActive } = useDropzone({
     onDrop,
@@ -73,8 +86,13 @@ export default function HomePage() {
   }
 
   const handleSaveApiKey = () => {
+    if (!apiKey || apiKey === 'your_openai_api_key_here') {
+      error('Invalid API Key', 'Please enter a valid OpenAI API key')
+      return
+    }
     localStorage.setItem('openai_api_key', apiKey)
     setShowSettings(false)
+    success('Settings saved', 'Your OpenAI API key has been saved')
   }
 
   const handleCameraCapture = () => {
@@ -95,7 +113,7 @@ export default function HomePage() {
 
   const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(event.target.files || [])
-    onDrop(files)
+    onDrop(files, [])  // Pass empty array for rejected files
     // Reset the input value to allow re-selecting the same file
     event.target.value = ''
   }
@@ -110,17 +128,21 @@ export default function HomePage() {
   }
 
   const handleSubmit = async () => {
-    if (mediaFiles.length === 0) return
+    if (mediaFiles.length === 0) {
+      warning('No files selected', 'Please upload at least one photo, video, or audio file')
+      return
+    }
 
     try {
       getOpenAIClient()
-    } catch (error) {
-      alert('Please set your OpenAI API key in settings')
+    } catch (err) {
+      error('API Key Required', 'Please set your OpenAI API key in settings')
       setShowSettings(true)
       return
     }
 
     setIsProcessing(true)
+    setProcessingStep('Preparing media files...')
     
     try {
       const mediaData: StoredMediaFile[] = await Promise.all(
@@ -133,38 +155,86 @@ export default function HomePage() {
         })
       )
 
-      const mediaDescriptions = mediaFiles.map((media, i) => {
-        if (media.type === 'video') {
-          return `Video ${i + 1}: A video showing work that needs to be done (${media.file.name})`
-        } else if (media.type === 'audio') {
-          return `Audio ${i + 1}: An audio recording describing work that needs to be done (${media.file.name})`
-        }
-        return `Image ${i + 1}: A photo showing an area or item that needs repair or maintenance (${media.file.name})`
-      })
+      // Prepare media inputs with actual base64 data for GPT-4 Vision
+      setProcessingStep('Encoding media files...')
+      const mediaInputs = await Promise.all(
+        mediaFiles.map(async (media) => {
+          const base64 = await fileToBase64(media.file)
+          return {
+            base64,
+            type: media.type,
+            description: media.type === 'video' 
+              ? `A video showing work that needs to be done (${media.file.name})`
+              : media.type === 'audio'
+              ? `An audio recording describing work that needs to be done (${media.file.name})`
+              : undefined
+          }
+        })
+      )
 
-      const taskData = await analyzeTaskFromMedia(mediaDescriptions)
+      setProcessingStep('Analyzing with AI...')
+      const taskData = await analyzeTaskFromMedia(mediaInputs)
+      
+      // Try to extract location from images
+      setProcessingStep('Extracting location data...')
+      let extractedLocation = null
+      for (const media of mediaFiles) {
+        if (media.type === 'image') {
+          const locationData = await extractLocationFromImage(media.file)
+          if (locationData) {
+            extractedLocation = formatLocation(locationData)
+            info('Location detected', `Found GPS coordinates in image`)
+            break // Use the first image with location data
+          }
+        }
+      }
       
       const taskId = uuidv4()
       const task = {
         id: taskId,
         ...taskData,
+        // Use extracted location if AI didn't detect one
+        location: taskData.location || extractedLocation || 'Not specified',
         media: mediaData,
         createdAt: new Date().toISOString(),
         status: 'draft' as const
       }
 
+      setProcessingStep('Saving task...')
       saveTask(task)
+      success('Task created!', 'Your task has been generated successfully')
       navigate({ to: '/task/$taskId', params: { taskId } })
-    } catch (error) {
-      console.error('Error processing task:', error)
-      alert('Failed to process task. Please check your API key and try again.')
+    } catch (err: any) {
+      console.error('Error processing task:', err)
+      
+      let errorMessage = 'An unexpected error occurred'
+      if (err.message?.includes('rate limit')) {
+        errorMessage = 'API rate limit reached. Please wait a moment and try again.'
+      } else if (err.message?.includes('API key')) {
+        errorMessage = 'Invalid API key. Please check your settings.'
+      } else if (err.message?.includes('network')) {
+        errorMessage = 'Network error. Please check your connection.'
+      } else if (err.message) {
+        errorMessage = err.message
+      }
+      
+      error('Failed to process task', errorMessage)
     } finally {
       setIsProcessing(false)
+      setProcessingStep('')
     }
   }
 
   return (
     <div className="min-h-screen bg-gray-900 text-white">
+      {/* Toast Notifications */}
+      <ToastContainer toasts={toasts} onClose={removeToast} />
+      
+      {/* Processing Overlay */}
+      {isProcessing && (
+        <ProcessingOverlay text={processingStep || 'Processing...'} />
+      )}
+
       {/* Header */}
       <div className="flex items-center justify-between p-4 border-b border-gray-800">
         <Link to="/" className="p-1">
@@ -281,7 +351,11 @@ export default function HomePage() {
           {mediaFiles.length > 0 && (
             <div className="mt-4 space-y-2">
               {mediaFiles.map((media, index) => (
-                <div key={index} className="flex items-center justify-between bg-gray-800 rounded-lg p-3 border border-gray-700">
+                <div 
+                  key={index} 
+                  className="flex items-center justify-between bg-gray-800 rounded-lg p-3 border border-gray-700 animate-slideIn hover:border-gray-600 transition-all"
+                  style={{ animationDelay: `${index * 50}ms` }}
+                >
                   <div className="flex items-center gap-3 min-w-0 flex-1">
                     {media.type === 'image' && <FiCamera className="w-5 h-5 text-gray-400 flex-shrink-0" />}
                     {media.type === 'video' && <FiVideo className="w-5 h-5 text-gray-400 flex-shrink-0" />}
@@ -341,17 +415,10 @@ export default function HomePage() {
             }
           `}
         >
-          {isProcessing ? (
-            <>
-              <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
-              Processing with AI...
-            </>
-          ) : (
-            <>
-              <div className="w-5 h-5 bg-gradient-to-r from-red-400 to-blue-400 rounded"></div>
-              Generate Ticket
-            </>
-          )}
+          <>
+            <div className="w-5 h-5 bg-gradient-to-r from-red-400 to-blue-400 rounded"></div>
+            Generate Ticket
+          </>
         </button>
       </div>
 

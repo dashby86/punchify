@@ -14,6 +14,7 @@ import reportWebVitals from './reportWebVitals.ts'
 import TaskListHome from './components/TaskListHome.tsx'
 import HomePage from './components/HomePage.tsx'
 import TaskDetail from './components/TaskDetail.tsx'
+import SharedTaskView from './components/SharedTaskView.tsx'
 
 const rootRoute = createRootRoute({
   component: () => <Outlet />,
@@ -37,7 +38,13 @@ const taskDetailRoute = createRoute({
   component: TaskDetail,
 })
 
-const routeTree = rootRoute.addChildren([indexRoute, createTaskRoute, taskDetailRoute])
+const sharedTaskRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/shared/$taskId',
+  component: SharedTaskView,
+})
+
+const routeTree = rootRoute.addChildren([indexRoute, createTaskRoute, taskDetailRoute, sharedTaskRoute])
 
 const router = createRouter({
   routeTree,

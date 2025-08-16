@@ -71,14 +71,15 @@ export default function TaskListHome() {
           </div>
         ) : (
           <div className="space-y-1">
-            {tasks.map((task) => (
+            {tasks.map((task, index) => (
               <Link
                 key={task.id}
                 to="/task/$taskId"
                 params={{ taskId: task.id }}
-                className="block"
+                className="block animate-fadeIn"
+                style={{ animationDelay: `${index * 100}ms` }}
               >
-                <div className="bg-gray-800 hover:bg-gray-750 transition-colors p-4 border-b border-gray-700">
+                <div className="bg-gray-800 hover:bg-gray-750 transition-all duration-200 p-4 border-b border-gray-700 hover:shadow-lg">
                   {/* Task Title and Status */}
                   <div className="flex items-start justify-between mb-3">
                     <h3 className="text-white font-medium flex-1 pr-2">{task.title}</h3>

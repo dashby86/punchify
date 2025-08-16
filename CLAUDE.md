@@ -24,31 +24,66 @@ npm run test       # Run tests using Vitest
 
 ## Architecture Overview
 
-This is a React 19 application built with:
+This is a mobile-optimized task management application that uses computer vision to automatically generate task descriptions from uploaded media.
+
+### Tech Stack
+- **React 19** with TypeScript
 - **Vite** as the build tool and dev server
-- **TypeScript** with strict mode enabled
-- **TanStack Router** for code-based routing (configured in src/main.tsx)
-- **Tailwind CSS v4** for styling (configured via @tailwindcss/vite plugin)
-- **Vitest** for testing with jsdom environment
+- **TanStack Router** for code-based routing
+- **Tailwind CSS v4** for mobile-first styling
+- **OpenAI GPT-4 Vision** for image analysis
+- **Web Share API** for native mobile sharing
+- **react-dropzone** for file uploads
+- **exifr** for extracting GPS data from images
+
+### Core Features
+1. **Media Upload**: Photo, video, and audio capture/upload
+2. **Task Generation**: Automatic task creation from media
+3. **Mobile Sharing**: Native share functionality for tasks
+4. **Public Task Views**: Shareable links for published tasks
+5. **Media Viewer**: Full-screen media viewing with navigation
+6. **EXIF Location**: Automatic location extraction from photos
 
 ### Project Structure
 
-- `/src/main.tsx` - Application entry point, router configuration
-- `/src/App.tsx` - Main application component (home route)
-- `/src/styles.css` - Global styles with Tailwind imports
-- `@/` alias configured for `/src/` directory imports
+```
+/src
+  /components
+    - HomePage.tsx         # Media upload and task creation
+    - TaskListHome.tsx     # Task list dashboard
+    - TaskDetail.tsx       # Task view/edit with sharing
+    - SharedTaskView.tsx   # Public shareable task view
+    - MediaViewer.tsx      # Full-screen media viewer
+    - Toast.tsx           # Toast notifications
+    - LoadingSpinner.tsx  # Loading states
+  /lib
+    - openai.ts   # GPT-4 Vision integration
+    - storage.ts  # LocalStorage task management
+    - share.ts    # Web Share API utilities
+    - exif.ts     # EXIF data extraction
+  - main.tsx      # App entry, router config
+  - styles.css    # Global styles, animations
+```
 
 ### Routing
 
-Currently using code-based routing with TanStack Router. Routes are defined in `src/main.tsx`:
-- Root route provides layout with `<Outlet />` and dev tools
-- Index route (`/`) renders the App component
+Routes defined in `src/main.tsx`:
+- `/` - Task list (TaskListHome)
+- `/create` - Create new task (HomePage)
+- `/task/:taskId` - View/edit task (TaskDetail)
+- `/shared/:taskId` - Public task view (SharedTaskView)
 
-To add new routes, create a `createRoute` call in main.tsx and add it to the routeTree.
+### API Configuration
 
-### TypeScript Configuration
+Set OpenAI API key via:
+1. Environment variable: `VITE_OPENAI_API_KEY` in `.env`
+2. In-app settings panel
+3. LocalStorage: `openai_api_key`
 
-- Target: ES2022
-- Strict mode enabled with additional linting rules
-- Path alias: `@/*` maps to `./src/*`
-- No unused locals/parameters enforced
+### Key Implementation Details
+
+- **GPT-4 Vision**: Sends actual base64 images for analysis
+- **Mobile-First**: Touch gestures, native share, responsive design
+- **Error Handling**: Toast notifications, loading overlays
+- **Animations**: Smooth transitions using Tailwind + custom CSS
+- **Storage**: Tasks persisted in LocalStorage with draft/published states

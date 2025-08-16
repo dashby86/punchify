@@ -19,13 +19,27 @@ export function getOpenAIClient() {
   return openaiClient
 }
 
-export async function analyzeTaskFromMedia(mediaDescriptions: string[]): Promise<any> {
+interface MediaInput {
+  base64: string
+  type: 'image' | 'video' | 'audio'
+  description?: string
+}
+
+export async function analyzeTaskFromMedia(
+  mediaInputs: MediaInput[]
+): Promise<any> {
   const client = getOpenAIClient()
   
   // Add retry logic for rate limits
   const makeRequest = async (retries = 3): Promise<any> => {
     try {
-      const prompt = `You are analyzing media files for a task management system. Based on the descriptions of uploaded images/videos, generate a detailed task description with the following information:
+      // Build message content with actual images
+      const messageContent: any[] = [
+        {
+          type: "text",
+          text: `You are analyzing media files for a task management system. Based on the uploaded images/videos/audio, generate a detailed task description.
+
+Analyze the visual content and provide:
 
 1. Task Title: A clear, concise title for the work needed
 2. Summary: A brief 1-2 sentence overview
@@ -35,11 +49,8 @@ export async function analyzeTaskFromMedia(mediaDescriptions: string[]): Promise
    - Recommended approach
    - Materials or tools likely needed
    - Estimated complexity/time
-4. Location: If identifiable from the description (e.g., "Kitchen", "Bathroom", "Exterior siding")
-5. Professional Type: What type of professional would handle this (e.g., "Plumber", "Electrician", "Handyman", "Carpenter")
-
-Media descriptions:
-${mediaDescriptions.map((desc, i) => `${i + 1}. ${desc}`).join('\n')}
+4. Location: If identifiable from the images (e.g., "Kitchen", "Bathroom", "Exterior siding", "Garage", "Living Room")
+5. Professional Type: What type of professional would handle this (e.g., "Plumber", "Electrician", "Handyman", "Carpenter", "HVAC Technician", "Painter")
 
 Please respond with ONLY valid JSON in this format:
 {
@@ -49,13 +60,34 @@ Please respond with ONLY valid JSON in this format:
   "location": "...",
   "professional": "..."
 }`
+        }
+      ]
+
+      // Add images to the message
+      mediaInputs.forEach((media, index) => {
+        if (media.type === 'image') {
+          messageContent.push({
+            type: "image_url",
+            image_url: {
+              url: media.base64,
+              detail: "high"
+            }
+          })
+        } else if (media.description) {
+          // For video/audio, add text descriptions since we can't send them directly yet
+          messageContent.push({
+            type: "text",
+            text: `${media.type === 'video' ? 'Video' : 'Audio'} ${index + 1}: ${media.description}`
+          })
+        }
+      })
 
       const response = await client.chat.completions.create({
-        model: import.meta.env.VITE_OPENAI_MODEL || 'gpt-4o-mini',
+        model: 'gpt-4o-mini',
         messages: [
           {
             role: 'user',
-            content: prompt
+            content: messageContent
           }
         ],
         max_tokens: 1000,

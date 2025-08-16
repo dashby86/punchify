@@ -16,4 +16,9 @@ export default defineConfig({
       '@': resolve(__dirname, './src'),
     },
   },
+  server: {
+    //https: false, // Keep as HTTP for now
+    host: true, // Allow external connections
+    allowedHosts: ['punchify.catfishgames.dev'],
+  },
 })
