@@ -1,6 +1,6 @@
 interface MediaFile {
   url: string
-  type: 'image' | 'video'
+  type: 'image' | 'video' | 'audio'
   transcript?: string
 }
 

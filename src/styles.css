@@ -13,3 +13,45 @@ code {
   font-family: source-code-pro, Menlo, Monaco, Consolas, "Courier New",
     monospace;
 }
+
+/* Custom scrollbar for mobile */
+* {
+  -webkit-overflow-scrolling: touch;
+}
+
+/* Additional custom styles */
+.hover\:bg-gray-750:hover {
+  background-color: rgb(55 65 81);
+}
+
+/* Mobile-specific improvements */
+@media (max-width: 640px) {
+  .touch-manipulation {
+    touch-action: manipulation;
+  }
+  
+  /* Improve tap targets on mobile */
+  button, .clickable {
+    min-height: 44px;
+    min-width: 44px;
+  }
+}
+
+/* Custom animations */
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.animate-fadeIn {
+  animation: fadeIn 0.2s ease-out;
+}
+
+/* Dark mode media file styles */
+.media-item {
+  transition: all 0.2s ease;
+}
+
+.media-item:hover {
+  transform: scale(1.02);
+}
