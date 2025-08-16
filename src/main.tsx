@@ -1,4 +1,4 @@
-import { StrictMode } from 'react'
+// import { StrictMode } from 'react' // Removed to prevent double-rendering in development
 import ReactDOM from 'react-dom/client'
 import {
   Outlet,
@@ -65,9 +65,7 @@ const rootElement = document.getElementById('app')
 if (rootElement && !rootElement.innerHTML) {
   const root = ReactDOM.createRoot(rootElement)
   root.render(
-    <StrictMode>
-      <RouterProvider router={router} />
-    </StrictMode>,
+    <RouterProvider router={router} />
   )
 }
 

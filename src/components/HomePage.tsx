@@ -41,22 +41,28 @@ export default function HomePage() {
   // Load persisted media on mount and cleanup on unmount
   useEffect(() => {
     const loadPersistedMedia = () => {
-      const persistedMedia = loadMediaFromSession()
-      if (persistedMedia.length > 0) {
-        const restoredFiles = persistedMedia.map(persisted => {
-          const file = base64ToFile(persisted.base64, persisted.name, persisted.lastModified)
-          return {
-            file,
-            preview: persisted.base64,
-            type: persisted.type,
-            name: persisted.name
-          }
-        })
-        setMediaFiles(restoredFiles)
-        info('Session restored', `Restored ${persistedMedia.length} uploaded file(s)`)
+      try {
+        const persistedMedia = loadMediaFromSession()
+        if (persistedMedia.length > 0 && mediaFiles.length === 0) {
+          // Only restore if we don't already have files (prevent double-loading)
+          const restoredFiles = persistedMedia.map(persisted => {
+            const file = base64ToFile(persisted.base64, persisted.name, persisted.lastModified)
+            return {
+              file,
+              preview: persisted.base64,
+              type: persisted.type,
+              name: persisted.name
+            }
+          })
+          setMediaFiles(restoredFiles)
+          info('Session restored', `Restored ${persistedMedia.length} uploaded file(s)`)
+        }
+      } catch (error) {
+        console.error('Failed to restore session:', error)
       }
     }
 
+    // Only load on initial mount
     loadPersistedMedia()
 
     return () => {
@@ -66,7 +72,7 @@ export default function HomePage() {
         }
       })
     }
-  }, [info])
+  }, []) // Remove 'info' dependency to prevent re-runs
 
   // Save media to session storage whenever mediaFiles changes
   useEffect(() => {
@@ -148,23 +154,28 @@ export default function HomePage() {
     success('Settings saved', 'Your OpenAI API key has been saved')
   }
 
-  const handleCameraCapture = () => {
+  const handleCameraCapture = (e?: React.MouseEvent) => {
+    e?.preventDefault()
     cameraInputRef.current?.click()
   }
 
-  const handleVideoCapture = () => {
+  const handleVideoCapture = (e?: React.MouseEvent) => {
+    e?.preventDefault()
     videoInputRef.current?.click()
   }
 
-  const handleAudioCapture = () => {
+  const handleAudioCapture = (e?: React.MouseEvent) => {
+    e?.preventDefault()
     audioInputRef.current?.click()
   }
 
-  const handleUploadExisting = () => {
+  const handleUploadExisting = (e?: React.MouseEvent) => {
+    e?.preventDefault()
     fileInputRef.current?.click()
   }
 
   const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    event.preventDefault() // Prevent any form submission
     const files = Array.from(event.target.files || [])
     onDrop(files, [])  // Pass empty array for rejected files
     // Reset the input value to allow re-selecting the same file
