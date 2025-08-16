@@ -37,7 +37,9 @@ export async function analyzeTaskFromMedia(
       const messageContent: any[] = [
         {
           type: "text",
-          text: `You are analyzing media files for a task management system. Based on the uploaded images/videos/audio, generate a detailed task description.
+          text: `You are analyzing media files for a task management system. Based on the uploaded images and video thumbnails, generate a detailed task description.
+
+IMPORTANT: Some images may be thumbnails extracted from videos. If an image appears to be a video thumbnail or if video transcript information is provided, consider this context carefully.
 
 Analyze the visual content and provide:
 
@@ -74,10 +76,10 @@ Please respond with ONLY valid JSON in this format:
             }
           })
         } else if (media.description) {
-          // For video/audio, add text descriptions since we can't send them directly yet
+          // For video thumbnails, add descriptive text
           messageContent.push({
             type: "text",
-            text: `${media.type === 'video' ? 'Video' : 'Audio'} ${index + 1}: ${media.description}`
+            text: `Media ${index + 1}: ${media.description}`
           })
         }
       })

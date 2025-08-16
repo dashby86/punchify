@@ -164,29 +164,52 @@ export default function HomePage() {
             }
           }
           
-          setProcessingStep('Compressing media files...')
-          const compressedBase64 = await optimizeMediaFile(media.file, media.type)
-          const sizeKB = getFileSizeKB(compressedBase64)
-          console.log(`Compressed ${media.name}: ${sizeKB}KB`)
+          setProcessingStep('Processing media files...')
+          let processedBase64: string
+          
+          if (media.type === 'video') {
+            // For videos: check file size and decide whether to store original or thumbnail
+            const videoSizeMB = media.file.size / (1024 * 1024)
+            if (videoSizeMB > 5) { // If video is larger than 5MB, store as thumbnail
+              processedBase64 = await optimizeMediaFile(media.file, media.type)
+              warning('Large video', `Video compressed to thumbnail due to size (${videoSizeMB.toFixed(1)}MB)`)
+            } else {
+              // Store original video for smaller files
+              processedBase64 = await fileToBase64(media.file)
+            }
+          } else {
+            // For images, always compress
+            processedBase64 = await optimizeMediaFile(media.file, media.type)
+          }
+          
+          const sizeKB = getFileSizeKB(processedBase64)
+          console.log(`Processed ${media.name}: ${sizeKB}KB`)
           return {
-            url: compressedBase64,
+            url: processedBase64,
             type: media.type,
             transcript
           }
         })
       )
 
-      // Prepare media inputs with compressed data for GPT-4 Vision analysis
+      // Prepare media inputs for GPT-4 Vision analysis (use original for AI, compressed for storage)
       setProcessingStep('Preparing AI analysis...')
       const mediaInputs = await Promise.all(
         mediaFiles.map(async (media, index) => {
-          // Use the already compressed data from mediaData
-          const matchingMedia = mediaData[index]
-          const base64 = matchingMedia?.url || await optimizeMediaFile(media.file, media.type)
+          let base64: string
+          
+          if (media.type === 'video') {
+            // For AI analysis, use video thumbnail but include transcript for context
+            base64 = await optimizeMediaFile(media.file, media.type) // This creates a thumbnail
+          } else {
+            // For images, use compressed version for AI analysis
+            base64 = await optimizeMediaFile(media.file, media.type)
+          }
           
           let description = undefined
           if (media.type === 'video') {
-            description = `A video showing work that needs to be done (${media.file.name})`
+            const matchingMedia = mediaData[index]
+            description = `A thumbnail from a video showing work that needs to be done (${media.file.name})`
             if (matchingMedia?.transcript) {
               description += `. Video transcript: "${matchingMedia.transcript}"`
             }
@@ -194,7 +217,7 @@ export default function HomePage() {
           
           return {
             base64,
-            type: media.type,
+            type: media.type === 'video' ? 'image' as const : media.type, // Send video thumbnails as images to AI
             description
           }
         })
