@@ -149,11 +149,12 @@ export default function HomePage() {
         id: taskId,
         ...taskData,
         media: mediaData,
-        createdAt: new Date().toISOString()
+        createdAt: new Date().toISOString(),
+        status: 'draft' as const
       }
 
       saveTask(task)
-      navigate({ to: '/' })
+      navigate({ to: '/task/$taskId', params: { taskId } })
     } catch (error) {
       console.error('Error processing task:', error)
       alert('Failed to process task. Please check your API key and try again.')

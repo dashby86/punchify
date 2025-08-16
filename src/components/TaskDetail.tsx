@@ -1,10 +1,11 @@
 import { useState, useEffect } from 'react'
-import { useParams, Link } from '@tanstack/react-router'
+import { useParams, Link, useNavigate } from '@tanstack/react-router'
 import { FiMapPin, FiUser, FiFileText, FiArrowLeft, FiChevronDown, FiTrash2, FiCamera, FiVideo, FiMic, FiUpload } from 'react-icons/fi'
-import { getTask, type Task } from '@/lib/storage'
+import { getTask, publishTask, deleteTask, type Task } from '@/lib/storage'
 
 export default function TaskDetail() {
   const { taskId } = useParams({ from: '/task/$taskId' })
+  const navigate = useNavigate()
   const [task, setTask] = useState<Task | null>(null)
   const [loading, setLoading] = useState(true)
 
@@ -14,24 +15,18 @@ export default function TaskDetail() {
     setLoading(false)
   }, [taskId])
 
-  const handleShare = async () => {
-    const shareUrl = window.location.href
-    
-    if (navigator.share) {
-      try {
-        await navigator.share({
-          title: task?.title || 'Task Details',
-          text: task?.summary || '',
-          url: shareUrl
-        })
-      } catch (error) {
-        if ((error as Error).name !== 'AbortError') {
-          console.error('Error sharing:', error)
-        }
-      }
-    } else {
-      await navigator.clipboard.writeText(shareUrl)
-      alert('Link copied to clipboard!')
+
+  const handlePublish = () => {
+    if (task) {
+      publishTask(task.id)
+      navigate({ to: '/' })
+    }
+  }
+
+  const handleDiscard = () => {
+    if (task) {
+      deleteTask(task.id)
+      navigate({ to: '/' })
     }
   }
 
@@ -242,18 +237,24 @@ export default function TaskDetail() {
         {/* Action Buttons */}
         <div className="space-y-3">
           <button 
-            onClick={handleShare}
+            onClick={handleDiscard}
             className="w-full py-3 bg-red-600 text-white rounded-xl font-medium flex items-center justify-center gap-2 hover:bg-red-700 transition-colors"
           >
             <FiTrash2 className="w-5 h-5" />
             Discard
           </button>
           
-          <button className="w-full py-3 bg-green-600 text-white rounded-xl font-medium hover:bg-green-700 transition-colors">
+          <button 
+            onClick={handlePublish}
+            className="w-full py-3 bg-green-600 text-white rounded-xl font-medium hover:bg-green-700 transition-colors"
+          >
             Publish task
           </button>
         </div>
       </div>
+
+      {/* Bottom padding to account for fixed navigation */}
+      <div className="h-20"></div>
 
       {/* Bottom Navigation */}
       <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200">

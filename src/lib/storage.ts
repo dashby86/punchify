@@ -13,6 +13,7 @@ interface Task {
   professional?: string
   media: MediaFile[]
   createdAt: string
+  status: 'draft' | 'published'
 }
 
 const TASKS_KEY = 'task_creator_tasks'
@@ -31,9 +32,45 @@ export function getTask(taskId: string): Task | null {
 export function getAllTasks(): Record<string, Task> {
   try {
     const tasksJson = localStorage.getItem(TASKS_KEY)
-    return tasksJson ? JSON.parse(tasksJson) : {}
+    const tasks = tasksJson ? JSON.parse(tasksJson) : {}
+    
+    // Migrate existing tasks without status field
+    let needsSave = false
+    Object.values(tasks).forEach((task: any) => {
+      if (!task.status) {
+        task.status = 'published' // Treat existing tasks as published
+        needsSave = true
+      }
+    })
+    
+    if (needsSave) {
+      localStorage.setItem(TASKS_KEY, JSON.stringify(tasks))
+    }
+    
+    return tasks
   } catch {
     return {}
+  }
+}
+
+export function getPublishedTasks(): Record<string, Task> {
+  const allTasks = getAllTasks()
+  const publishedTasks: Record<string, Task> = {}
+  
+  Object.values(allTasks).forEach(task => {
+    if (task.status === 'published') {
+      publishedTasks[task.id] = task
+    }
+  })
+  
+  return publishedTasks
+}
+
+export function publishTask(taskId: string): void {
+  const tasks = getAllTasks()
+  if (tasks[taskId]) {
+    tasks[taskId].status = 'published'
+    localStorage.setItem(TASKS_KEY, JSON.stringify(tasks))
   }
 }
 

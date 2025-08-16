@@ -1,14 +1,14 @@
 import { useState, useEffect } from 'react'
 import { Link } from '@tanstack/react-router'
 import { FiHome, FiFileText, FiPlus, FiUser, FiChevronRight } from 'react-icons/fi'
-import { getAllTasks, type Task } from '@/lib/storage'
+import { getPublishedTasks, type Task } from '@/lib/storage'
 
 export default function TaskListHome() {
   const [tasks, setTasks] = useState<Task[]>([])
 
   useEffect(() => {
-    const allTasks = getAllTasks()
-    const taskList = Object.values(allTasks).sort((a, b) => 
+    const publishedTasks = getPublishedTasks()
+    const taskList = Object.values(publishedTasks).sort((a, b) => 
       new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
     )
     setTasks(taskList)
