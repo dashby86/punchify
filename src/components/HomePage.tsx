@@ -8,13 +8,7 @@ import { saveTask, type MediaFile as StoredMediaFile } from '@/lib/storage'
 import { extractLocationFromImage, formatLocation } from '@/lib/exif'
 import { ProcessingOverlay } from './LoadingSpinner'
 import { ToastContainer, useToast } from './Toast'
-import { 
-  saveMediaToSession, 
-  loadMediaFromSession, 
-  clearMediaSession, 
-  hasMediaInSession,
-  base64ToFile
-} from '@/lib/session'
+// Session storage removed - would be better implemented with backend + CDN
 
 interface MediaFile {
   file: File
@@ -35,33 +29,8 @@ export default function HomePage() {
   const videoInputRef = useRef<HTMLInputElement>(null)
   const audioInputRef = useRef<HTMLInputElement>(null)
 
-  // Load persisted media on mount and cleanup on unmount
+  // Cleanup object URLs when component unmounts or files change
   useEffect(() => {
-    const loadPersistedMedia = () => {
-      try {
-        const persistedMedia = loadMediaFromSession()
-        if (persistedMedia.length > 0 && mediaFiles.length === 0) {
-          // Only restore if we don't already have files (prevent double-loading)
-          const restoredFiles = persistedMedia.map(persisted => {
-            const file = base64ToFile(persisted.base64, persisted.name, persisted.lastModified)
-            return {
-              file,
-              preview: persisted.base64,
-              type: persisted.type,
-              name: persisted.name
-            }
-          })
-          setMediaFiles(restoredFiles)
-          // Session restored silently - no need to notify user
-        }
-      } catch (error) {
-        console.error('Failed to restore session:', error)
-      }
-    }
-
-    // Only load on initial mount
-    loadPersistedMedia()
-
     return () => {
       mediaFiles.forEach(media => {
         if (media.preview && media.preview.startsWith('blob:')) {
@@ -69,25 +38,12 @@ export default function HomePage() {
         }
       })
     }
-  }, []) // Remove 'info' dependency to prevent re-runs
-
-  // Save media to session storage whenever mediaFiles changes
-  useEffect(() => {
-    if (mediaFiles.length > 0) {
-      const filesToSave = mediaFiles.map(media => ({
-        file: media.file,
-        type: media.type
-      }))
-      saveMediaToSession(filesToSave)
-    } else {
-      clearMediaSession()
-    }
   }, [mediaFiles])
 
   // Warn user before leaving if they have uploaded media
   useEffect(() => {
     const handleBeforeUnload = (e: BeforeUnloadEvent) => {
-      if (hasMediaInSession() && !isProcessing) {
+      if (mediaFiles.length > 0 && !isProcessing) {
         e.preventDefault()
         e.returnValue = 'You have uploaded media that will be lost. Are you sure you want to leave?'
         return e.returnValue
@@ -96,7 +52,7 @@ export default function HomePage() {
 
     window.addEventListener('beforeunload', handleBeforeUnload)
     return () => window.removeEventListener('beforeunload', handleBeforeUnload)
-  }, [isProcessing])
+  }, [mediaFiles.length, isProcessing])
 
   const onDrop = useCallback((acceptedFiles: File[], rejectedFiles: any[]) => {
     if (rejectedFiles.length > 0) {
@@ -255,9 +211,6 @@ export default function HomePage() {
       setProcessingStep('Saving task...')
       saveTask(task)
       
-      // Clear session storage since task was successfully created
-      clearMediaSession()
-      
       success('Task created!', 'Your task has been generated successfully')
       navigate({ to: '/task/$taskId', params: { taskId } })
     } catch (err: any) {
@@ -277,9 +230,6 @@ export default function HomePage() {
       }
       
       error('Failed to process task', errorMessage)
-      
-      // Don't clear session storage on error - user can retry
-      // Only clear if they explicitly discard or successfully create task
     } finally {
       setIsProcessing(false)
       setProcessingStep('')
@@ -419,7 +369,6 @@ export default function HomePage() {
               }
             })
             setMediaFiles([])
-            clearMediaSession()
             // Reset all file inputs
             if (fileInputRef.current) fileInputRef.current.value = ''
             if (cameraInputRef.current) cameraInputRef.current.value = ''

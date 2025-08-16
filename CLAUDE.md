@@ -87,3 +87,12 @@ Set OpenAI API key via:
 - **Error Handling**: Toast notifications, loading overlays
 - **Animations**: Smooth transitions using Tailwind + custom CSS
 - **Storage**: Tasks persisted in LocalStorage with draft/published states
+- **Media Handling**: Files stored in memory only (browser session)
+
+### Known Limitations & Future Improvements
+
+- **Media Persistence**: Currently media files are lost on page refresh. In production, this would be improved with:
+  - Backend file storage service (AWS S3, Cloudinary, etc.)
+  - CDN for fast media delivery
+  - Progressive upload with resume capability
+  - File compression and optimization
