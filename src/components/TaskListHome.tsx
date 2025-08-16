@@ -1,10 +1,12 @@
 import { useState, useEffect } from 'react'
 import { Link } from '@tanstack/react-router'
-import { FiHome, FiFileText, FiPlus, FiUser, FiChevronRight } from 'react-icons/fi'
+import { FiHome, FiFileText, FiPlus, FiUser, FiChevronRight, FiShare2 } from 'react-icons/fi'
 import { getPublishedTasks, type Task } from '@/lib/storage'
+import { shareTask } from '@/lib/share'
 
 export default function TaskListHome() {
   const [tasks, setTasks] = useState<Task[]>([])
+  const [sharingTaskId, setSharingTaskId] = useState<string | null>(null)
 
   useEffect(() => {
     const publishedTasks = getPublishedTasks()
@@ -13,6 +15,20 @@ export default function TaskListHome() {
     )
     setTasks(taskList)
   }, [])
+
+  const handleShare = async (task: Task, e: React.MouseEvent) => {
+    e.preventDefault() // Prevent navigation to task detail
+    e.stopPropagation()
+    
+    setSharingTaskId(task.id)
+    try {
+      await shareTask(task)
+    } catch (error) {
+      console.error('Share failed:', error)
+    } finally {
+      setSharingTaskId(null)
+    }
+  }
 
   const formatDate = (dateString: string) => {
     const date = new Date(dateString)
@@ -83,9 +99,19 @@ export default function TaskListHome() {
                   {/* Task Title and Status */}
                   <div className="flex items-start justify-between mb-3">
                     <h3 className="text-white font-medium flex-1 pr-2">{task.title}</h3>
-                    <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${getStatusColor('In Progress')}`}>
-                      In Progress
-                    </span>
+                    <div className="flex items-center gap-2">
+                      <button
+                        onClick={(e) => handleShare(task, e)}
+                        disabled={sharingTaskId === task.id}
+                        className="p-2 text-gray-400 hover:text-blue-400 transition-colors disabled:opacity-50"
+                        title="Share task"
+                      >
+                        <FiShare2 className="w-4 h-4" />
+                      </button>
+                      <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${getStatusColor('In Progress')}`}>
+                        In Progress
+                      </span>
+                    </div>
                   </div>
 
                   {/* Assignor and Assignee */}

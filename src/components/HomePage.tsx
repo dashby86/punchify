@@ -1,7 +1,7 @@
 import { useState, useCallback, useRef, useEffect } from 'react'
 import { useNavigate, Link } from '@tanstack/react-router'
 import { useDropzone } from 'react-dropzone'
-import { FiCamera, FiVideo, FiMic, FiUpload, FiX, FiSettings, FiChevronLeft } from 'react-icons/fi'
+import { FiCamera, FiVideo, FiMic, FiUpload, FiX, FiChevronLeft } from 'react-icons/fi'
 import { v4 as uuidv4 } from 'uuid'
 import { analyzeTaskFromMedia, getOpenAIClient } from '@/lib/openai'
 import { saveTask, type MediaFile as StoredMediaFile } from '@/lib/storage'
@@ -28,10 +28,7 @@ export default function HomePage() {
   const [mediaFiles, setMediaFiles] = useState<MediaFile[]>([])
   const [isProcessing, setIsProcessing] = useState(false)
   const [processingStep, setProcessingStep] = useState('')
-  const [apiKey, setApiKey] = useState(() => 
-    localStorage.getItem('openai_api_key') || ''
-  )
-  const [showSettings, setShowSettings] = useState(false)
+  // API key is now handled via environment variables
   const { toasts, removeToast, success, error, warning, info } = useToast()
   const fileInputRef = useRef<HTMLInputElement>(null)
   const cameraInputRef = useRef<HTMLInputElement>(null)
@@ -144,15 +141,7 @@ export default function HomePage() {
     })
   }
 
-  const handleSaveApiKey = () => {
-    if (!apiKey || apiKey === 'your_openai_api_key_here') {
-      error('Invalid API Key', 'Please enter a valid OpenAI API key')
-      return
-    }
-    localStorage.setItem('openai_api_key', apiKey)
-    setShowSettings(false)
-    success('Settings saved', 'Your OpenAI API key has been saved')
-  }
+  // API key handling removed - now using environment variables
 
   const handleCameraCapture = (e?: React.MouseEvent) => {
     e?.preventDefault()
@@ -200,8 +189,7 @@ export default function HomePage() {
     try {
       getOpenAIClient()
     } catch (err) {
-      error('API Key Required', 'Please set your OpenAI API key in settings')
-      setShowSettings(true)
+      error('API Key Required', 'Please check your OpenAI API key configuration')
       return
     }
 
@@ -282,11 +270,16 @@ export default function HomePage() {
         errorMessage = 'Invalid API key. Please check your settings.'
       } else if (err.message?.includes('network')) {
         errorMessage = 'Network error. Please check your connection.'
+      } else if (err.message?.includes('JSON')) {
+        errorMessage = 'AI response format error. Please try again.'
       } else if (err.message) {
         errorMessage = err.message
       }
       
       error('Failed to process task', errorMessage)
+      
+      // Don't clear session storage on error - user can retry
+      // Only clear if they explicitly discard or successfully create task
     } finally {
       setIsProcessing(false)
       setProcessingStep('')
@@ -312,12 +305,7 @@ export default function HomePage() {
           <div className="w-6 h-6 bg-gradient-to-r from-red-500 to-blue-500 rounded"></div>
           <span className="text-lg font-semibold">AI Task Creator</span>
         </div>
-        <button
-          onClick={() => setShowSettings(!showSettings)}
-          className="p-1"
-        >
-          <FiSettings className="w-6 h-6 text-gray-400" />
-        </button>
+        <div className="w-6"></div> {/* Spacer for symmetry */}
       </div>
 
       <div className="p-4">
@@ -328,32 +316,6 @@ export default function HomePage() {
           </p>
         </div>
 
-        {/* Settings Panel */}
-        {showSettings && (
-          <div className="bg-gray-800 rounded-xl p-4 mb-6 border border-gray-700">
-            <h3 className="font-semibold text-white mb-3">Settings</h3>
-            <div className="space-y-3">
-              <div>
-                <label className="block text-sm text-gray-300 mb-1">
-                  OpenAI API Key
-                </label>
-                <input
-                  type="password"
-                  value={apiKey}
-                  onChange={(e) => setApiKey(e.target.value)}
-                  placeholder="sk-..."
-                  className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                />
-              </div>
-              <button
-                onClick={handleSaveApiKey}
-                className="w-full py-2 px-4 bg-green-600 text-white rounded-lg hover:bg-green-700"
-              >
-                Save Settings
-              </button>
-            </div>
-          </div>
-        )}
 
         {/* Create Content Section */}
         <div className="mb-6">
@@ -507,6 +469,7 @@ export default function HomePage() {
         type="file"
         accept="image/*"
         capture="environment"
+        multiple
         onChange={handleFileChange}
         className="hidden"
       />
@@ -515,6 +478,7 @@ export default function HomePage() {
         type="file"
         accept="video/*"
         capture="environment"
+        multiple
         onChange={handleFileChange}
         className="hidden"
       />
@@ -522,6 +486,7 @@ export default function HomePage() {
         ref={audioInputRef}
         type="file"
         accept="audio/*"
+        multiple
         onChange={handleFileChange}
         className="hidden"
       />

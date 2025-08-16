@@ -22,10 +22,30 @@ export function saveMediaToSession(files: { file: File; type: 'image' | 'video' 
         })
       )
       
-      sessionStorage.setItem(SESSION_KEY, JSON.stringify(persistedFiles))
+      const dataToStore = JSON.stringify(persistedFiles)
+      
+      // Check if data will fit in session storage
+      const storageLimit = 5 * 1024 * 1024 // 5MB typical limit
+      if (dataToStore.length > storageLimit) {
+        console.warn('Media files too large for session storage, skipping persistence')
+        return resolve()
+      }
+      
+      sessionStorage.setItem(SESSION_KEY, dataToStore)
       resolve()
     } catch (error) {
-      console.error('Failed to save media to session:', error)
+      if (error.name === 'QuotaExceededError') {
+        console.warn('Session storage quota exceeded, clearing and retrying...')
+        try {
+          // Clear session storage and try again with just the new files
+          clearMediaSession()
+          sessionStorage.setItem(SESSION_KEY, JSON.stringify(persistedFiles))
+        } catch (retryError) {
+          console.error('Failed to save even after clearing session storage:', retryError)
+        }
+      } else {
+        console.error('Failed to save media to session:', error)
+      }
       resolve()
     }
   })
