@@ -146,6 +146,8 @@ export default function HomePage() {
   const handleVideoCapture = (e?: React.MouseEvent) => {
     e?.preventDefault()
     if (videoInputRef.current) {
+      // Set flag to indicate video capture is in progress
+      setIsCameraCapturing(true)
       videoInputRef.current.click()
     }
   }
