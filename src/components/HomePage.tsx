@@ -8,7 +8,6 @@ import { saveTask, type MediaFile as StoredMediaFile } from '@/lib/storage'
 import { extractLocationFromImage, formatLocation } from '@/lib/exif'
 import { optimizeMediaFile, getFileSizeKB, extractVideoFrames } from '@/lib/compress'
 import { storeVideoWithFallback } from '@/lib/videoStorage'
-import { ProcessingOverlay } from './LoadingSpinner'
 import { SnackbarContainer } from './Snackbar'
 import { useSnackbar } from '@/hooks/useSnackbar'
 // Session storage removed - would be better implemented with backend + CDN
@@ -30,6 +29,7 @@ export default function HomePage() {
   const fileInputRef = useRef<HTMLInputElement>(null)
   const cameraInputRef = useRef<HTMLInputElement>(null)
   const videoInputRef = useRef<HTMLInputElement>(null)
+  const abortControllerRef = useRef<AbortController | null>(null)
 
   // Cleanup object URLs when component unmounts or files change
   useEffect(() => {
@@ -39,6 +39,11 @@ export default function HomePage() {
           URL.revokeObjectURL(media.preview)
         }
       })
+      
+      // Cleanup abort controller
+      if (abortControllerRef.current) {
+        abortControllerRef.current.abort()
+      }
     }
   }, [mediaFiles])
 
@@ -166,7 +171,11 @@ export default function HomePage() {
   }
 
 
-  const handleSubmit = async () => {
+  const handleSubmit = async (event?: React.FormEvent) => {
+    if (event) {
+      event.preventDefault()
+    }
+    
     if (mediaFiles.length === 0) {
       warning('No files selected', 'Please upload at least one photo, video, or audio file')
       return
@@ -179,6 +188,8 @@ export default function HomePage() {
       return
     }
 
+    // Create abort controller for this request
+    abortControllerRef.current = new AbortController()
     setIsProcessing(true)
     setProcessingStep('Preparing media files...')
     
@@ -332,6 +343,11 @@ export default function HomePage() {
     } catch (err: any) {
       console.error('Error processing task:', err)
       
+      // Don't show error if request was aborted
+      if (abortControllerRef.current?.signal.aborted) {
+        return
+      }
+      
       let errorMessage = 'An unexpected error occurred'
       if (err.message?.includes('rate limit')) {
         errorMessage = 'API rate limit reached. Please wait a moment and try again.'
@@ -349,6 +365,7 @@ export default function HomePage() {
     } finally {
       setIsProcessing(false)
       setProcessingStep('')
+      abortControllerRef.current = null
     }
   }
 
@@ -359,7 +376,29 @@ export default function HomePage() {
       
       {/* Processing Overlay */}
       {isProcessing && (
-        <ProcessingOverlay text={processingStep || 'Processing...'} />
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center">
+          <div className="bg-gray-800 rounded-xl p-6 mx-4 max-w-sm w-full text-center border border-gray-700">
+            <div className="w-8 h-8 border-2 border-white border-t-transparent rounded-full animate-spin mx-auto mb-4" />
+            <h3 className="text-lg font-semibold mb-2">Processing with AI...</h3>
+            <p className="text-gray-300 text-sm mb-4">
+              {processingStep || 'Analyzing your media files and generating task details. This may take a moment.'}
+            </p>
+            <button
+              type="button"
+              onClick={() => {
+                if (abortControllerRef.current) {
+                  abortControllerRef.current.abort()
+                }
+                setIsProcessing(false)
+                setProcessingStep('')
+                warning('Cancelled', 'Task creation was cancelled')
+              }}
+              className="px-4 py-2 bg-gray-700 text-gray-300 rounded-lg hover:bg-gray-600 transition-colors"
+            >
+              Cancel
+            </button>
+          </div>
+        </div>
       )}
 
       {/* Header */}
@@ -374,7 +413,7 @@ export default function HomePage() {
         <div className="w-6"></div> {/* Spacer for symmetry */}
       </div>
 
-      <div className="p-4">
+      <form onSubmit={handleSubmit} className="p-4">
         {/* Info Banner */}
         <div className="bg-gradient-to-r from-red-900/30 to-blue-900/30 border border-red-500/20 rounded-xl p-4 mb-6">
           <p className="text-center text-sm">
@@ -390,16 +429,20 @@ export default function HomePage() {
           {/* Capture Buttons */}
           <div className="grid grid-cols-2 gap-3 mb-4">
             <button
+              type="button"
               onClick={handleCameraCapture}
-              className="bg-gray-800 border border-gray-700 rounded-xl p-6 flex flex-col items-center justify-center hover:bg-gray-750 transition-colors"
+              disabled={isProcessing}
+              className="bg-gray-800 border border-gray-700 rounded-xl p-6 flex flex-col items-center justify-center hover:bg-gray-750 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
             >
               <FiCamera className="w-8 h-8 mb-2 text-gray-300" />
               <span className="text-sm text-gray-300">Photo</span>
             </button>
             
             <button
+              type="button"
               onClick={handleVideoCapture}
-              className="bg-gray-800 border border-gray-700 rounded-xl p-6 flex flex-col items-center justify-center hover:bg-gray-750 transition-colors"
+              disabled={isProcessing}
+              className="bg-gray-800 border border-gray-700 rounded-xl p-6 flex flex-col items-center justify-center hover:bg-gray-750 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
             >
               <FiVideo className="w-8 h-8 mb-2 text-gray-300" />
               <span className="text-sm text-gray-300">Video</span>
@@ -408,8 +451,10 @@ export default function HomePage() {
 
           {/* Upload Existing Button */}
           <button
+            type="button"
             onClick={handleUploadExisting}
-            className="w-full bg-gray-800 border border-gray-700 rounded-xl p-4 flex items-center justify-center gap-2 hover:bg-gray-750 transition-colors mb-4"
+            disabled={isProcessing}
+            className="w-full bg-gray-800 border border-gray-700 rounded-xl p-4 flex items-center justify-center gap-2 hover:bg-gray-750 transition-colors mb-4 disabled:opacity-50 disabled:cursor-not-allowed"
           >
             <FiUpload className="w-5 h-5 text-gray-300" />
             <span className="text-gray-300">Upload existing</span>
@@ -452,8 +497,10 @@ export default function HomePage() {
                     </span>
                   </div>
                   <button
+                    type="button"
                     onClick={() => removeFile(index)}
-                    className="p-1 text-gray-400 hover:text-red-400 ml-2 flex-shrink-0"
+                    disabled={isProcessing}
+                    className="p-1 text-gray-400 hover:text-red-400 ml-2 flex-shrink-0 disabled:opacity-50 disabled:cursor-not-allowed"
                   >
                     <FiX className="w-4 h-4" />
                   </button>
@@ -466,6 +513,7 @@ export default function HomePage() {
 
         {/* Discard Button */}
         <button
+          type="button"
           onClick={() => {
             // Clean up object URLs to prevent memory leaks
             mediaFiles.forEach(media => {
@@ -481,8 +529,8 @@ export default function HomePage() {
             
             success('Files cleared', 'All uploaded files have been removed')
           }}
-          className="w-full bg-gray-800 border border-gray-700 rounded-xl p-4 flex items-center justify-center gap-2 hover:bg-gray-750 transition-colors mb-4"
-          disabled={mediaFiles.length === 0}
+          className="w-full bg-gray-800 border border-gray-700 rounded-xl p-4 flex items-center justify-center gap-2 hover:bg-gray-750 transition-colors mb-4 disabled:opacity-50 disabled:cursor-not-allowed"
+          disabled={mediaFiles.length === 0 || isProcessing}
         >
           <FiX className="w-5 h-5 text-gray-400" />
           <span className="text-gray-400">Discard</span>
@@ -490,7 +538,7 @@ export default function HomePage() {
 
         {/* Generate Ticket Button */}
         <button
-          onClick={handleSubmit}
+          type="submit"
           disabled={mediaFiles.length === 0 || isProcessing}
           className={`
             w-full py-4 px-6 rounded-xl font-semibold
@@ -506,7 +554,7 @@ export default function HomePage() {
             Generate Ticket
           </>
         </button>
-      </div>
+      </form>
 
       {/* Hidden File Inputs */}
       <input
