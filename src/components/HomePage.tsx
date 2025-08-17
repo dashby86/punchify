@@ -24,6 +24,7 @@ export default function HomePage() {
   const [mediaFiles, setMediaFiles] = useState<MediaFile[]>([])
   const [isProcessing, setIsProcessing] = useState(false)
   const [processingStep, setProcessingStep] = useState('')
+  const [isCameraCapturing, setIsCameraCapturing] = useState(false)
   // API key is now handled via environment variables
   const { snackbars, removeSnackbar, success, error, warning, info } = useSnackbar()
   const fileInputRef = useRef<HTMLInputElement>(null)
@@ -50,16 +51,17 @@ export default function HomePage() {
   // Warn user before leaving if they have uploaded media
   useEffect(() => {
     const handleBeforeUnload = (e: BeforeUnloadEvent) => {
-      if (mediaFiles.length > 0 && !isProcessing) {
-        e.preventDefault()
-        e.returnValue = 'You have uploaded media that will be lost. Are you sure you want to leave?'
-        return e.returnValue
+      // Only warn if we have media files and we're not currently processing
+      // and we're not in the middle of a camera capture operation
+      if (mediaFiles.length > 0 && !isProcessing && !isCameraCapturing) {
+        // Set the return value to trigger the browser's warning
+        e.returnValue = 'You have uploaded media that will be lost if you leave.'
       }
     }
 
     window.addEventListener('beforeunload', handleBeforeUnload)
     return () => window.removeEventListener('beforeunload', handleBeforeUnload)
-  }, [mediaFiles.length, isProcessing])
+  }, [mediaFiles.length, isProcessing, isCameraCapturing])
 
   // Handle focus/visibility changes to ensure responsiveness
   useEffect(() => {
@@ -135,6 +137,8 @@ export default function HomePage() {
   const handleCameraCapture = (e?: React.MouseEvent) => {
     e?.preventDefault()
     if (cameraInputRef.current) {
+      // Set flag to indicate camera capture is in progress
+      setIsCameraCapturing(true)
       cameraInputRef.current.click()
     }
   }
@@ -163,6 +167,14 @@ export default function HomePage() {
     
     // Reset the input value to allow re-selecting the same file
     event.target.value = ''
+    
+    // Clear camera capturing flag with a small delay to ensure file processing completes
+    // and beforeunload handler doesn't trigger immediately after camera capture
+    if (isCameraCapturing) {
+      setTimeout(() => {
+        setIsCameraCapturing(false)
+      }, 100)
+    }
     
     // Ensure the page remains responsive by removing focus
     if (document.activeElement instanceof HTMLElement) {
