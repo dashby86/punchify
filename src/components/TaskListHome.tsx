@@ -82,8 +82,8 @@ export default function TaskListHome() {
       {/* Snackbar Notifications */}
       <SnackbarContainer snackbars={snackbars} onClose={removeSnackbar} />
       
-      {/* Address Tabs */}
-      {addresses.length > 0 && (
+      {/* Address Tabs - Show if there are any tasks OR addresses */}
+      {(getTasksByAddress().length > 0 || addresses.length > 0) && (
         <div className="px-4 py-3 border-b border-gray-800">
           <div className="flex space-x-4 text-sm overflow-x-auto">
             <button
@@ -118,22 +118,24 @@ export default function TaskListHome() {
       <div className="flex-1">
         {/* Selected Address Header */}
         {selectedAddress && (
-          <div className="px-4 py-3 bg-gray-800/50">
-            <h2 className="text-lg font-medium text-white">
-              {selectedAddress}
+          <div className="mx-4 mt-4 mb-2 p-4 bg-gradient-to-r from-gray-800/50 to-gray-800/30 rounded-xl border border-gray-700/30">
+            <h2 className="text-lg font-semibold text-white">
+              📍 {selectedAddress}
             </h2>
-            <p className="text-sm text-gray-400">
+            <p className="text-sm text-gray-400 mt-1">
               {tasks.length} task{tasks.length !== 1 ? 's' : ''} at this location
             </p>
           </div>
         )}
         {tasks.length === 0 ? (
-          <div className="flex flex-col items-center justify-center py-20">
-            <FiFileText className="w-16 h-16 text-gray-600 mb-4" />
-            <h3 className="text-lg font-medium text-gray-400 mb-2">
+          <div className="flex flex-col items-center justify-center py-20 px-4">
+            <div className="bg-gray-800/30 rounded-full p-6 mb-4">
+              <FiFileText className="w-12 h-12 text-gray-500" />
+            </div>
+            <h3 className="text-lg font-medium text-gray-300 mb-2">
               {selectedAddress ? 'No tasks at this location' : 'No tasks yet'}
             </h3>
-            <p className="text-gray-500 text-center px-4">
+            <p className="text-gray-500 text-center max-w-sm">
               {selectedAddress 
                 ? 'No tasks found for this address. Try another location or create a new task.'
                 : 'Create your first task by tapping the + button below'
@@ -141,24 +143,24 @@ export default function TaskListHome() {
             </p>
           </div>
         ) : (
-          <div className="space-y-1">
+          <div className="px-4 py-4 space-y-3">
             {tasks.map((task, index) => (
               <Link
                 key={task.id}
                 to="/task/$taskId"
                 params={{ taskId: task.id }}
-                className="block animate-fadeIn"
+                className="block animate-fadeIn transform transition-all duration-300 hover:scale-[1.01]"
                 style={{ animationDelay: `${index * 100}ms` }}
               >
-                <div className="bg-gray-800 hover:bg-gray-750 transition-all duration-200 p-4 border-b border-gray-700 hover:shadow-lg">
+                <div className="bg-gray-800/80 backdrop-blur-sm hover:bg-gray-750/90 transition-all duration-300 p-5 rounded-xl border border-gray-700/50 shadow-sm hover:shadow-lg hover:border-gray-600/50">
                   {/* Task Title and Status */}
-                  <div className="flex items-start justify-between mb-3">
-                    <h3 className="text-white font-medium flex-1 pr-2">{task.title}</h3>
+                  <div className="flex items-start justify-between mb-4">
+                    <h3 className="text-white font-semibold text-lg flex-1 pr-2">{task.title}</h3>
                     <div className="flex items-center gap-2">
                       <button
                         onClick={(e) => handleShare(task, e)}
                         disabled={sharingTaskId === task.id}
-                        className="p-2 text-gray-400 hover:text-blue-400 transition-colors disabled:opacity-50"
+                        className="p-2 text-gray-400 hover:text-blue-400 transition-all hover:bg-gray-700/50 rounded-lg disabled:opacity-50"
                         title="Share task"
                       >
                         <FiShare2 className="w-4 h-4" />
@@ -168,52 +170,54 @@ export default function TaskListHome() {
 
 
                   {/* Summary */}
-                  <div className="mb-3">
-                    <p className="text-sm font-medium text-gray-300 mb-1">Summary</p>
-                    <p className="text-sm text-gray-400 line-clamp-2">{task.summary}</p>
+                  <div className="mb-4">
+                    <p className="text-xs font-medium text-gray-500 uppercase tracking-wider mb-1">Summary</p>
+                    <p className="text-sm text-gray-300 line-clamp-2">{task.summary}</p>
                   </div>
 
                   {/* Description Preview */}
-                  <div className="mb-3">
-                    <p className="text-sm font-medium text-gray-300 mb-1">Description</p>
-                    <p className="text-sm text-gray-400 line-clamp-3">{task.description}</p>
+                  <div className="mb-4">
+                    <p className="text-xs font-medium text-gray-500 uppercase tracking-wider mb-1">Description</p>
+                    <p className="text-sm text-gray-400 line-clamp-3 leading-relaxed">{task.description}</p>
                   </div>
 
-                  {/* Location, Project, Address */}
-                  <div className="grid grid-cols-2 gap-4 text-sm mb-3">
-                    <div>
-                      <p className="text-gray-500">Location</p>
-                      <p className="text-gray-300">{task.location || 'Not specified'}</p>
+                  {/* Metadata Row */}
+                  <div className="flex flex-wrap gap-4 text-xs border-t border-gray-700/30 pt-4 mt-4">
+                    <div className="flex items-center gap-1">
+                      <span className="text-gray-500">Location:</span>
+                      <span className="text-gray-300">{task.location || 'Not specified'}</span>
                     </div>
-                    <div>
-                      <p className="text-gray-500">Trade</p>
-                      <p className="text-gray-300">{task.professional || 'General'}</p>
+                    <div className="flex items-center gap-1">
+                      <span className="text-gray-500">Trade:</span>
+                      <span className="text-gray-300">{task.professional || 'General'}</span>
                     </div>
-                  </div>
-
-
-                  {/* Created Date */}
-                  <div className="text-sm mb-4">
-                    <p className="text-gray-500">Created</p>
-                    <p className="text-gray-300">{formatDate(task.createdAt)}</p>
+                    <div className="flex items-center gap-1 ml-auto">
+                      <span className="text-gray-500">Created:</span>
+                      <span className="text-gray-300">{formatDate(task.createdAt)}</span>
+                    </div>
                   </div>
 
                   {/* Media thumbnails */}
                   {task.media && task.media.length > 0 && (
-                    <div className="flex space-x-2">
-                      {task.media.slice(0, 2).map((media, index) => (
-                        <div key={index} className="w-12 h-12 bg-gray-700 rounded-lg flex items-center justify-center">
+                    <div className="flex gap-2 mt-3">
+                      {task.media.slice(0, 3).map((media, index) => (
+                        <div key={index} className="w-14 h-14 bg-gray-700/50 rounded-lg flex items-center justify-center overflow-hidden border border-gray-600/30">
                           {media.type === 'image' ? (
                             <img 
                               src={media.url} 
                               alt="Task media"
-                              className="w-full h-full object-cover rounded-lg"
+                              className="w-full h-full object-cover"
                             />
                           ) : (
-                            <FiFileText className="w-6 h-6 text-gray-400" />
+                            <FiFileText className="w-6 h-6 text-gray-500" />
                           )}
                         </div>
                       ))}
+                      {task.media.length > 3 && (
+                        <div className="w-14 h-14 bg-gray-700/50 rounded-lg flex items-center justify-center border border-gray-600/30">
+                          <span className="text-xs text-gray-400">+{task.media.length - 3}</span>
+                        </div>
+                      )}
                     </div>
                   )}
                 </div>
